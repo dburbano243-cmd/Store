@@ -12,6 +12,7 @@ interface CartContextType {
   getTotalPrice: () => number
   clearCart: () => void
   isCartOpen: boolean
+  isHydrated: boolean
   openCart: () => void
   closeCart: () => void
 }
@@ -21,13 +22,19 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
 
   // Cargar carrito desde localStorage al inicializar
   useEffect(() => {
     const savedCart = localStorage.getItem("cart")
     if (savedCart) {
-      setCartItems(JSON.parse(savedCart))
+      try {
+        setCartItems(JSON.parse(savedCart))
+      } catch {
+        // ignore corrupt data
+      }
     }
+    setIsHydrated(true)
   }, [])
 
   // Guardar carrito en localStorage cuando cambie
@@ -132,6 +139,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         getTotalPrice,
         clearCart,
         isCartOpen,
+        isHydrated,
         openCart,
         closeCart,
       }}

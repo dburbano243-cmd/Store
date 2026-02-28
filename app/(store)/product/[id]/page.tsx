@@ -1,14 +1,13 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import useSWR from "swr"
-import { Star, Truck, Check } from "lucide-react"
+import { Star, Truck, Check, Minus, Plus } from "lucide-react"
 import { fetchProductBySlug } from "@/lib/products"
 import type { MediaFile } from "@/lib/types"
 import { useCart } from "@/hooks/useCart"
-import CheckoutModal from "@/components/CheckoutModal"
 import Navbar from "@/components/Navbar"
 import CartSidebar from "@/components/CartSidebar"
 import imagePayments from "../../../../public/payments.png"
@@ -16,12 +15,13 @@ import imagePayments from "../../../../public/payments.png"
 export default function ProductPage() {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const params = useParams()
+  const router = useRouter()
   const slug = params.id as string
 
   const { addToCart, clearCart } = useCart()
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
   const [selectedOffer, setSelectedOffer] = useState(1)
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [customQty, setCustomQty] = useState(1)
 
   const { data: product, isLoading } = useSWR(
     slug ? `product-${slug}` : null,
@@ -87,6 +87,7 @@ export default function ProductPage() {
     return Math.max(...candidates)
   }
 
+  // Quick-pick offers for 1, 2, 3 to show "LLEVA MAS, AHORRA MAS"
   const offers = [1, 2, 3].map((q) => {
     const original = basePrice * q
     const discountTotal = bestDiscountTotalForQuantity(q)
@@ -101,16 +102,36 @@ export default function ProductPage() {
     }
   })
 
+  // Current calculated price for the chosen customQty
+  const currentOriginalTotal = basePrice * customQty
+  const currentDiscountTotal = bestDiscountTotalForQuantity(customQty)
+  const currentFinalTotal = Math.max(0, currentOriginalTotal - currentDiscountTotal)
+
   const features = product.features
 
+  const handleSelectOffer = (qty: number) => {
+    setSelectedOffer(qty)
+    setCustomQty(qty)
+  }
+
+  const incrementQty = () => {
+    const newQty = customQty + 1
+    setCustomQty(newQty)
+    setSelectedOffer(newQty <= 3 ? newQty : 0) // Deselect preset if > 3
+  }
+
+  const decrementQty = () => {
+    if (customQty <= 1) return
+    const newQty = customQty - 1
+    setCustomQty(newQty)
+    setSelectedOffer(newQty <= 3 ? newQty : 0)
+  }
+
   const handleBuyOffer = () => {
-    const selectedOfferData = offers.find((offer) => offer.id === selectedOffer)
-    if (selectedOfferData) {
-      clearCart()
-      const pricePerItem = selectedOfferData.price / selectedOfferData.quantity
-      addToCart(product, selectedOfferData.quantity, pricePerItem, currentMediaIndex)
-      setIsCheckoutOpen(true)
-    }
+    clearCart()
+    const pricePerItem = currentFinalTotal / customQty
+    addToCart(product, customQty, pricePerItem, currentMediaIndex)
+    router.push("/checkout")
   }
 
   const currentMedia = mediaFiles[currentMediaIndex]
@@ -174,9 +195,8 @@ export default function ProductPage() {
                   <button
                     key={index}
                     onClick={() => setCurrentMediaIndex(index)}
-                    className={`w-16 h-16 aspect-square rounded-lg overflow-hidden border-2 relative flex-shrink-0 ${
-                      index === currentMediaIndex ? "border-lime-500" : "border-gray-200"
-                    }`}
+                    className={`w-16 h-16 aspect-square rounded-lg overflow-hidden border-2 relative flex-shrink-0 ${index === currentMediaIndex ? "border-lime-500" : "border-gray-200"
+                      }`}
                   >
                     {media.type === "image" ? (
                       <Image
@@ -249,15 +269,15 @@ export default function ProductPage() {
 
               {/* Price */}
               <div className="flex items-center gap-2 mb-4">
-                {product.priceWithoutDiscount > product.price && (
+                {product.priceWithDiscount < product.price && (
                   <span className="text-lg line-through text-gray-400">
-                    $ {product.priceWithoutDiscount.toLocaleString("es-CO")}
+                    $ {product.price.toLocaleString("es-CO")}
                   </span>
                 )}
-                <span className="text-2xl font-bold text-lime-600">$ {product.price.toLocaleString("es-CO")}</span>
-                {product.priceWithoutDiscount > product.price && (
+                <span className="text-2xl font-bold text-lime-600">$ {product.priceWithDiscount.toLocaleString("es-CO")}</span>
+                {product.priceWithDiscount < product.price && (
                   <span className="bg-lime-500 text-white text-xs px-2 py-1 rounded">
-                    Ahorra $ {(product.priceWithoutDiscount - product.price).toLocaleString("es-CO")}
+                    Ahorra $ {(product.price - product.priceWithDiscount).toLocaleString("es-CO")}
                   </span>
                 )}
               </div>
@@ -290,10 +310,9 @@ export default function ProductPage() {
                 {offers.map((offer) => (
                   <div
                     key={offer.id}
-                    onClick={() => setSelectedOffer(offer.id)}
-                    className={`relative border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                      selectedOffer === offer.id ? "border-lime-500 bg-lime-50" : "border-gray-200"
-                    }`}
+                    onClick={() => handleSelectOffer(offer.id)}
+                    className={`relative border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedOffer === offer.id ? "border-lime-500 bg-lime-50" : "border-gray-200"
+                      }`}
                   >
                     {offer.badge && (
                       <div className="absolute -top-2 left-4 px-2 py-1 text-xs font-bold rounded bg-lime-500 text-white">
@@ -315,15 +334,16 @@ export default function ProductPage() {
                       <div className="flex-1">
                         <div className="font-bold text-gray-900">{offer.label}</div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm line-through text-gray-400">$ {offer.originalPrice}</span>
-                          <span className="font-bold text-lime-600">$ {offer.price}</span>
+                          {offer.originalPrice > offer.price && (
+                            <span className="text-sm line-through text-gray-400">$ {offer.originalPrice.toLocaleString("es-CO")}</span>
+                          )}
+                          <span className="font-bold text-lime-600">$ {offer.price.toLocaleString("es-CO")}</span>
                         </div>
                       </div>
 
                       <div
-                        className={`w-5 h-5 rounded-full border-2 flex-shrink-0 ${
-                          selectedOffer === offer.id ? "border-lime-500 bg-lime-500" : "border-gray-300"
-                        }`}
+                        className={`w-5 h-5 rounded-full border-2 flex-shrink-0 ${selectedOffer === offer.id ? "border-lime-500 bg-lime-500" : "border-gray-300"
+                          }`}
                       >
                         {selectedOffer === offer.id && (
                           <div className="w-full h-full bg-white rounded-full scale-50" />
@@ -332,6 +352,43 @@ export default function ProductPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Quantity selector */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={decrementQty}
+                  disabled={customQty <= 1}
+                  className="w-10 h-10 rounded-lg border-2 border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Reducir cantidad"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="text-lg font-bold w-10 text-center">{customQty}</span>
+                <button
+                  type="button"
+                  onClick={incrementQty}
+                  className="w-10 h-10 rounded-lg border-2 border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                  aria-label="Aumentar cantidad"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+
+                {/* Show calculated total */}
+                <div className="ml-auto text-right">
+                  {currentDiscountTotal > 0 && (
+                    <span className="text-sm line-through text-gray-400 block">
+                      $ {currentOriginalTotal.toLocaleString("es-CO")}
+                    </span>
+                  )}
+                  <span className="text-lg font-bold text-lime-600">
+                    $ {currentFinalTotal.toLocaleString("es-CO")}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -357,8 +414,6 @@ export default function ProductPage() {
         </div>
       </div>
 
-      {/* Checkout Modal */}
-      <CheckoutModal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} />
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </div>
   )

@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import { X, Minus, Plus, Trash2 } from "lucide-react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { useCart } from "@/hooks/useCart"
-import CheckoutModal from "./CheckoutModal"
 
 interface CartSidebarProps {
   isOpen: boolean
@@ -13,10 +12,11 @@ interface CartSidebarProps {
 
 export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   const { cartItems, updateQuantity, removeFromCart, getTotalPrice } = useCart()
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const router = useRouter()
 
   const handleCheckout = () => {
-    setIsCheckoutOpen(true)
+    onClose()
+    router.push("/checkout")
   }
 
   return (
@@ -137,8 +137,6 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
         </div>
       </div>
 
-      {/* Checkout Modal */}
-      <CheckoutModal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} />
     </>
   )
 }

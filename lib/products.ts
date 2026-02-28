@@ -31,6 +31,7 @@ interface SupabaseProductPrice {
 interface SupabaseProductDiscount {
   id: string
   currency_code: string
+  discount_amount: number | null
   discount_amount_in_cents: number | null
   discount_percent: number | null
   is_active: boolean
@@ -107,13 +108,14 @@ function mapProduct(row: SupabaseProduct): Product {
   const activeDiscounts = (row.product_price_discounts ?? []).filter(
     (d) => d.is_active && d.currency_code === "COP"
   )
-  let priceWithoutDiscount = copPrice
+  let priceWithDiscount = copPrice
   if (activeDiscounts.length > 0) {
     const discount = activeDiscounts[0]
-    if (discount.discount_amount_in_cents) {
-      priceWithoutDiscount = copPrice + discount.discount_amount_in_cents
+    const discountAmt = discount.discount_amount ?? discount.discount_amount_in_cents
+    if (discountAmt) {
+      priceWithDiscount = copPrice - discountAmt
     } else if (discount.discount_percent) {
-      priceWithoutDiscount = Math.round(copPrice / (1 - discount.discount_percent / 100))
+      priceWithDiscount = Math.round(copPrice / (1 - discount.discount_percent / 100))
     }
   }
 
@@ -137,7 +139,7 @@ function mapProduct(row: SupabaseProduct): Product {
     name: row.name,
     description: row.description,
     price: copPrice,
-    priceWithoutDiscount,
+    priceWithDiscount,
     prices_by_currency: pricesByCurrency,
     stock: row.stock ?? row.units_in_stock ?? 0,
     units_in_stock: row.units_in_stock ?? row.stock ?? 0,
@@ -399,7 +401,7 @@ export async function updateProductDiscount(
   payload: Partial<ProductPriceDiscountPayload>
 ): Promise<SupabaseProductDiscount | null> {
   const updateData: Record<string, unknown> = {}
-  
+
   if (payload.currency_code !== undefined) updateData.currency_code = payload.currency_code
   if (payload.discount_amount !== undefined) updateData.discount_amount = payload.discount_amount
   if (payload.discount_percent !== undefined) updateData.discount_percent = payload.discount_percent

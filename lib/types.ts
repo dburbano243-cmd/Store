@@ -39,7 +39,7 @@ export interface Product {
   /** Active COP price (from product_prices) */
   price: number
   /** Original price before discount (from product_price_discounts or product_prices) */
-  priceWithoutDiscount: number
+  priceWithDiscount: number
   /** All active prices keyed by currency */
   prices_by_currency: Record<string, number>
   stock: number
