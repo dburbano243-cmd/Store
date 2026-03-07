@@ -8,6 +8,8 @@ import {
   Store,
   ChevronUp,
   Settings,
+  ShoppingBag,
+  Truck,
 } from "lucide-react"
 
 import {
@@ -35,6 +37,16 @@ const mainNav = [
     label: "Productos",
     href: "/admin/products",
     icon: Package,
+  },
+  {
+    label: "Órdenes",
+    href: "/admin/orders",
+    icon: ShoppingBag,
+  },
+  {
+    label: "Envíos",
+    href: "/admin/shipments",
+    icon: Truck,
   },
 ]
 

@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { ShoppingBag, CreditCard, Eye, EyeOff, Loader2, ChevronDown, ArrowLeft, Lock, Minus, Plus, Trash2 } from "lucide-react"
+import { ShoppingBag, CreditCard, Eye, EyeOff, Loader2, ChevronDown, ArrowLeft, Lock, Minus, Plus, Trash2, Truck } from "lucide-react"
 import { useCart } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { useToast } from "@/hooks/use-toast"
@@ -20,7 +20,15 @@ interface SelectOption {
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { cartItems, getTotalPrice, isHydrated, updateQuantity, removeFromCart } = useCart()
+  const { cartItems, getTotalPrice, getTotalItems, isHydrated, updateQuantity, removeFromCart } = useCart()
+  
+  // Shipping cost logic: free if 5+ items, otherwise 10,000 COP
+  const SHIPPING_COST = 10000
+  const FREE_SHIPPING_THRESHOLD = 5
+  const totalItems = getTotalItems()
+  const shippingCost = totalItems >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST
+  const subtotal = getTotalPrice()
+  const totalWithShipping = subtotal + shippingCost
   const { user, profile } = useAuth()
   const { toast } = useToast()
 
@@ -42,16 +50,16 @@ export default function CheckoutPage() {
     name: "",
     password: "",
     confirmPassword: "",
-    address: "",
   })
 
-  // Section 2: Payment / Datos de pago
+  // Section 2: Payment / Datos de pago y envio
   const [paymentForm, setPaymentForm] = useState({
     phone: "",
     legalId: "",
     city: "",
     type_document_id: "",
     neighborhood: "",
+    address: "",
   })
 
   // Fetch type_documents and gender options
@@ -81,7 +89,6 @@ export default function CheckoutPage() {
             name: data.name || profile.name || "",
             password: "",
             confirmPassword: "",
-            address: data.address || "",
           })
           setPaymentForm({
             phone: data.phone || "",
@@ -89,6 +96,7 @@ export default function CheckoutPage() {
             city: data.city || "",
             type_document_id: data.type_document_id || "",
             neighborhood: data.neighborhood || "",
+            address: data.address || "",
           })
         }
       }
@@ -198,7 +206,7 @@ export default function CheckoutPage() {
               user_id: authData.user.id,
               name: accountForm.name,
               email: accountForm.email,
-              address: accountForm.address || null,
+              address: paymentForm.address || null,
               city: paymentForm.city || null,
               neighborhood: paymentForm.neighborhood || null,
               phone: paymentForm.phone || null,
@@ -243,7 +251,9 @@ export default function CheckoutPage() {
         unit_price: Math.round(item.price),
       }))
 
-      const total = Math.round(getTotalPrice())
+      const orderSubtotal = Math.round(subtotal)
+      const orderShippingCost = shippingCost
+      const orderTotal = Math.round(totalWithShipping)
       const returnUrl = `${window.location.origin}/payment-response`
 
       const res = await fetch("/api/create-order", {
@@ -252,14 +262,16 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           customer_id: customerId,
           items,
-          total,
+          subtotal: orderSubtotal,
+          shipping_cost: orderShippingCost,
+          total: orderTotal,
           return_url: returnUrl,
           customer: {
             name: accountForm.name,
             email: accountForm.email,
             phone: paymentForm.phone,
             legal_id: paymentForm.legalId || undefined,
-            address: accountForm.address,
+            address: paymentForm.address,
             city: paymentForm.city,
           },
         }),
@@ -421,11 +433,42 @@ export default function CheckoutPage() {
                 })}
               </div>
 
-              <div className="border-t border-border mt-6 pt-4">
+              <div className="border-t border-border mt-6 pt-4 flex flex-col gap-2">
+                {/* Subtotal */}
                 <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Subtotal</span>
+                  <span className="text-sm text-foreground">
+                    ${subtotal.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+                
+                {/* Shipping */}
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1.5">
+                    <Truck className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Envio</span>
+                  </div>
+                  {shippingCost === 0 ? (
+                    <span className="text-sm font-medium text-lime-600">Gratis</span>
+                  ) : (
+                    <span className="text-sm text-foreground">
+                      ${shippingCost.toLocaleString("es-CO")}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Free shipping hint */}
+                {shippingCost > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Agrega {FREE_SHIPPING_THRESHOLD - totalItems} producto{FREE_SHIPPING_THRESHOLD - totalItems > 1 ? 's' : ''} mas para envio gratis
+                  </p>
+                )}
+                
+                {/* Total */}
+                <div className="flex justify-between items-center pt-2 border-t border-border">
                   <span className="text-base font-semibold text-foreground">Total</span>
                   <span className="text-xl font-bold text-lime-600">
-                    ${getTotalPrice().toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    ${totalWithShipping.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </span>
                 </div>
               </div>
@@ -577,20 +620,6 @@ export default function CheckoutPage() {
                           </div>
                         </div>
                       )}
-
-                      {/* Address */}
-                      <div>
-                        <label htmlFor="ck-address" className={labelClass}>Direccion de entrega *</label>
-                        <input
-                          id="ck-address"
-                          type="text"
-                          required
-                          value={accountForm.address}
-                          onChange={(e) => updateAccount("address", e.target.value)}
-                          className={inputClass}
-                          placeholder="Calle 123 #4-5, Apto 201"
-                        />
-                      </div>
                     </div>
                   )}
 
@@ -631,6 +660,20 @@ export default function CheckoutPage() {
                     <p className="text-sm text-muted-foreground mb-5">Informacion necesaria para procesar tu pago y envio</p>
 
                     <div className="flex flex-col gap-4">
+                      {/* Address */}
+                      <div>
+                        <label htmlFor="ck-address" className={labelClass}>Direccion de entrega *</label>
+                        <input
+                          id="ck-address"
+                          type="text"
+                          required
+                          value={paymentForm.address}
+                          onChange={(e) => updatePayment("address", e.target.value)}
+                          className={inputClass}
+                          placeholder="Calle 123 #4-5, Apto 201"
+                        />
+                      </div>
+
                       {/* Phone */}
                       <div>
                         <label htmlFor="ck-phone" className={labelClass}>Telefono *</label>

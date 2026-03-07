@@ -46,7 +46,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const qty = Number(quantity) || 1
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id)
-      const itemPrice = price !== undefined ? price : product.price
+      // Use priceWithDiscount (which already has the discount for 1 unit applied) when no explicit price is passed
+      const itemPrice = price !== undefined ? price : product.priceWithDiscount
 
       if (existingItem) {
         const newQty = Number(existingItem.quantity) + qty

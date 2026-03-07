@@ -33,10 +33,13 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { customer_id, items, total, return_url } = body as {
+    const { customer_id, items, subtotal, shipping_cost, total, return_url, customer } = body as {
       customer_id: string
       items: Array<{ product_id: string; quantity: number; unit_price: number }>
+      subtotal: number
+      shipping_cost: number
       total: number
+      customer: object
       return_url: string
     }
 
@@ -79,6 +82,9 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         customer_id: resolvedCustomerId,
         items,
+        customer,
+        subtotal,
+        shipping_cost,
         total,
         return_url,
       }),
