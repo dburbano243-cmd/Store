@@ -104,12 +104,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Helper: given a product-like object, its base unit price and a desired quantity,
   // compute the per-unit price applying discounts from `discounts` metadata.
+  // All prices are in COP.
   function computeUnitPriceFromProduct(prod: any, basePrice: number, q: number) {
     const discounts = prod.discounts ?? []
     const candidates: number[] = []
     for (const d of discounts) {
       if (!d || !d.is_active) continue
-      if (d.currency_code !== "COP") continue
       const units = d.metadata?.units ? Number(d.metadata.units) : null
       const amount = Number(d.discount_amount ?? 0)
       if (!units || !amount) continue

@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { ShoppingBag, CreditCard, Eye, EyeOff, Loader2, ChevronDown, ArrowLeft, Lock, Minus, Plus, Trash2, Truck } from "lucide-react"
+import { ShoppingBag, CreditCard, Eye, EyeOff, Loader2, ArrowLeft, Lock, Minus, Plus, Trash2, Truck } from "lucide-react"
 import { useCart } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { useToast } from "@/hooks/use-toast"
@@ -12,11 +12,6 @@ import { supabase } from "@/lib/supabase"
 import Navbar from "@/components/Navbar"
 import CartSidebar from "@/components/CartSidebar"
 import CitySelect from "@/components/CitySelect"
-
-interface SelectOption {
-  id: string
-  name: string
-}
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -37,10 +32,6 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
 
-  // Options from DB
-  const [typeDocuments, setTypeDocuments] = useState<SelectOption[]>([])
-  const [loadingOptions, setLoadingOptions] = useState(true)
-
   // Mode: register or login
   const [mode, setMode] = useState<"register" | "login">("register")
 
@@ -55,23 +46,9 @@ export default function CheckoutPage() {
   // Section 2: Payment / Datos de pago y envio
   const [paymentForm, setPaymentForm] = useState({
     phone: "",
-    legalId: "",
     city: "",
-    type_document_id: "",
-    neighborhood: "",
     address: "",
   })
-
-  // Fetch type_documents and gender options
-  useEffect(() => {
-    async function fetchOptions() {
-      setLoadingOptions(true)
-      const docsRes = await supabase.from("type_documents").select("id, name")
-      if (docsRes.data) setTypeDocuments(docsRes.data)
-      setLoadingOptions(false)
-    }
-    fetchOptions()
-  }, [])
 
   // Pre-fill when user is logged in
   useEffect(() => {
@@ -79,7 +56,7 @@ export default function CheckoutPage() {
       const prefill = async () => {
         const { data } = await supabase
           .from("users")
-          .select("name, email, phone, document_number, address, city, neighborhood, type_document_id, type_gender_id")
+          .select("name, email, phone, address, city")
           .eq("id", user.id)
           .single()
 
@@ -92,10 +69,7 @@ export default function CheckoutPage() {
           })
           setPaymentForm({
             phone: data.phone || "",
-            legalId: data.document_number || "",
             city: data.city || "",
-            type_document_id: data.type_document_id || "",
-            neighborhood: data.neighborhood || "",
             address: data.address || "",
           })
         }
@@ -208,10 +182,7 @@ export default function CheckoutPage() {
               email: accountForm.email,
               address: paymentForm.address || null,
               city: paymentForm.city || null,
-              neighborhood: paymentForm.neighborhood || null,
               phone: paymentForm.phone || null,
-              type_document_id: paymentForm.type_document_id || null,
-              document_number: paymentForm.legalId || null,
             }),
           })
 
@@ -222,11 +193,19 @@ export default function CheckoutPage() {
             return
           }
 
-          // 3. Show toast about email confirmation
-          toast({
-            title: "Revisa tu correo",
-            description: "Te enviamos un enlace de confirmacion a tu correo electronico para activar tu cuenta.",
+          // 3. Auto-login after registration
+          const { error: loginError } = await supabase.auth.signInWithPassword({
+            email: accountForm.email,
+            password: accountForm.password,
           })
+
+          if (loginError) {
+            // If auto-login fails, show message but continue with order
+            toast({
+              title: "Cuenta creada",
+              description: "Tu cuenta fue creada. Revisa tu correo para confirmarla.",
+            })
+          }
         } else {
           // Login mode
           const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
@@ -270,7 +249,6 @@ export default function CheckoutPage() {
             name: accountForm.name,
             email: accountForm.email,
             phone: paymentForm.phone,
-            legal_id: paymentForm.legalId || undefined,
             address: paymentForm.address,
             city: paymentForm.city,
           },
@@ -488,13 +466,7 @@ export default function CheckoutPage() {
 
           {/* RIGHT COLUMN: Forms */}
           <div className="w-full lg:w-7/12">
-            {loadingOptions ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">Cargando...</span>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                 {/* Error */}
                 {error && (
                   <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
@@ -688,38 +660,6 @@ export default function CheckoutPage() {
                         />
                       </div>
 
-                      {/* Document type + number */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="ck-type-doc" className={labelClass}>Tipo de documento</label>
-                          <div className="relative">
-                            <select
-                              id="ck-type-doc"
-                              value={paymentForm.type_document_id}
-                              onChange={(e) => updatePayment("type_document_id", e.target.value)}
-                              className={`${inputClass} appearance-none pr-8`}
-                            >
-                              <option value="">Seleccionar...</option>
-                              {typeDocuments.map((doc) => (
-                                <option key={doc.id} value={doc.id}>{doc.name}</option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                          </div>
-                        </div>
-                        <div>
-                          <label htmlFor="ck-legal-id" className={labelClass}>Numero de documento</label>
-                          <input
-                            id="ck-legal-id"
-                            type="text"
-                            value={paymentForm.legalId}
-                            onChange={(e) => updatePayment("legalId", e.target.value)}
-                            className={inputClass}
-                            placeholder="1234567890"
-                          />
-                        </div>
-                      </div>
-
                       {/* City */}
                       <div>
                         <label htmlFor="ck-city" className={labelClass}>Ciudad *</label>
@@ -730,19 +670,6 @@ export default function CheckoutPage() {
                           onChange={(val) => updatePayment("city", val)}
                           className={inputClass}
                           placeholder="Busca tu ciudad..."
-                        />
-                      </div>
-
-                      {/* Neighborhood */}
-                      <div>
-                        <label htmlFor="ck-neighborhood" className={labelClass}>Barrio</label>
-                        <input
-                          id="ck-neighborhood"
-                          type="text"
-                          value={paymentForm.neighborhood}
-                          onChange={(e) => updatePayment("neighborhood", e.target.value)}
-                          className={inputClass}
-                          placeholder="Tu barrio"
                         />
                       </div>
                     </div>
@@ -774,7 +701,6 @@ export default function CheckoutPage() {
                   Tus datos estan protegidos y tu pago es 100% seguro
                 </p>
               </form>
-            )}
           </div>
         </div>
       </div>

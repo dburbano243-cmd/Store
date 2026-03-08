@@ -14,7 +14,6 @@ export interface ProductMedia {
 export interface ProductPrice {
   id: string
   amount: number
-  currency_code: string
   is_active: boolean
   source: string | null
   effective_at: string | null
@@ -23,7 +22,6 @@ export interface ProductPrice {
 
 export interface ProductDiscount {
   id: string
-  currency_code: string
   discount_amount_in_cents: number | null
   discount_percent: number | null
   start_at: string | null
@@ -40,17 +38,16 @@ export interface Product {
   price: number
   /** Original price before discount (from product_price_discounts or product_prices) */
   priceWithDiscount: number
-  /** All active prices keyed by currency */
-  prices_by_currency: Record<string, number>
+  /** Price in COP */
+  priceCOP: number
   stock: number
-  units_in_stock: number
+  stock: number
   stars: number
   reviews: number
   features: string[]
   media: ProductMedia[]
   discounts?: Array<{
     id: string
-    currency_code: string
     discount_amount?: number
     discount_percent?: number
     metadata?: any

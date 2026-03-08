@@ -13,13 +13,12 @@ function getAdminClient() {
   return createClient(supabaseUrl, serviceRoleKey)
 }
 
-// POST - Create discount
+// POST - Create discount (all prices in COP)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const {
       product_id,
-      currency_code,
       discount_amount,
       discount_percent,
       start_at,
@@ -38,7 +37,6 @@ export async function POST(req: NextRequest) {
       .from("product_price_discounts")
       .insert({
         product_id,
-        currency_code: currency_code || "COP",
         discount_amount: discount_amount || null,
         discount_percent: discount_percent || null,
         start_at: start_at || new Date().toISOString(),
@@ -61,13 +59,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PUT - Update discount
+// PUT - Update discount (all prices in COP)
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json()
     const {
       id,
-      currency_code,
       discount_amount,
       discount_percent,
       start_at,
@@ -83,7 +80,6 @@ export async function PUT(req: NextRequest) {
     const supabase = getAdminClient()
 
     const updateData: Record<string, unknown> = {}
-    if (currency_code !== undefined) updateData.currency_code = currency_code
     if (discount_amount !== undefined) updateData.discount_amount = discount_amount
     if (discount_percent !== undefined) updateData.discount_percent = discount_percent
     if (start_at !== undefined) updateData.start_at = start_at

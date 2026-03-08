@@ -70,7 +70,7 @@ interface ProductFormData {
   name: string
   slug: string
   description: string
-  units_in_stock: string
+  stock: string
   stars: string
   reviews: string
 }
@@ -78,12 +78,10 @@ interface ProductFormData {
 interface PriceFormData {
   amount: string
   is_active: boolean
-  currency_code: string
 }
 
 interface DiscountForm {
   id?: string  // If exists, it's an existing discount to update
-  currency_code: string
   discount_amount: string
   discount_percent: string
   start_at: string
@@ -112,7 +110,7 @@ function emptyForm(): ProductFormData {
     name: "",
     slug: "",
     description: "",
-    units_in_stock: "0",
+    stock: "0",
     stars: "0",
     reviews: "0",
   }
@@ -123,7 +121,7 @@ function productToForm(p: Product): ProductFormData {
     name: p.name,
     slug: p.slug ?? "",
     description: p.description,
-    units_in_stock: String(p.units_in_stock),
+    stock: String(p.stock),
     stars: String(p.stars),
     reviews: String(p.reviews),
   }
@@ -134,7 +132,7 @@ function formToPayload(f: ProductFormData): ProductPayload {
     name: f.name,
     slug: f.slug || f.name.toLowerCase().replace(/\s+/g, "-"),
     description: f.description,
-    units_in_stock: Number(f.units_in_stock) || 0,
+    stock: Number(f.stock) || 0,
     stars: Number(f.stars) || 0,
     reviews: Number(f.reviews) || 0,
   }
@@ -166,7 +164,7 @@ export default function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null)
   const [form, setForm] = useState<ProductFormData>(emptyForm)
-  const [price, setPrice] = useState<PriceFormData>({ amount: "0", is_active: true, currency_code: "COP" })
+  const [price, setPrice] = useState<PriceFormData>({ amount: "0", is_active: true })
   const [discounts, setDiscounts] = useState<DiscountForm[]>([])
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [existingMedia, setExistingMedia] = useState<ExistingMedia[]>([])
@@ -231,7 +229,7 @@ export default function AdminProductsPage() {
   const addDiscountRow = () => {
     setDiscounts((prev) => [
       ...prev,
-      { currency_code: "COP", discount_amount: "0", discount_percent: "", start_at: "", end_at: "", metadata_units: "0", is_active: true },
+      { discount_amount: "0", discount_percent: "", start_at: "", end_at: "", metadata_units: "0", is_active: true },
     ])
   }
 
@@ -335,7 +333,7 @@ export default function AdminProductsPage() {
   const openCreate = () => {
     setEditingProduct(null)
     setForm(emptyForm())
-    setPrice({ amount: "0", is_active: true, currency_code: "COP" })
+    setPrice({ amount: "0", is_active: true })
     setDiscounts([])
     setMediaFiles([])
     setExistingMedia([])
@@ -346,21 +344,13 @@ export default function AdminProductsPage() {
     setEditingProduct(product)
     setForm(productToForm(product))
     
-    // Load price
-    const entries = Object.entries(product.prices_by_currency || {})
-    if (entries.length > 0) {
-      const cop = entries.find(([c]) => c === "COP")
-      const [currency, amount] = cop ?? entries[0]
-      setPrice({ amount: String(amount ?? 0), is_active: true, currency_code: currency })
-    } else {
-      setPrice({ amount: "0", is_active: true, currency_code: "COP" })
-    }
+    // Load price (all prices in COP)
+    setPrice({ amount: String(product.priceCOP ?? product.price ?? 0), is_active: true })
 
     // Load discounts
     if (product.discounts && product.discounts.length > 0) {
       const ds = product.discounts.map((d: any) => ({
         id: d.id,  // Keep the ID to know if it's existing
-        currency_code: d.currency_code ?? "COP",
         discount_amount: d.discount_amount ? String(d.discount_amount) : "",
         discount_percent: d.discount_percent ? String(d.discount_percent) : "",
         start_at: formatDateForInput(d.start_at),
@@ -404,12 +394,11 @@ export default function AdminProductsPage() {
       }
 
       if (savedProduct) {
-        // Create/update price
+        // Create/update price (all prices in COP)
         const amountNum = Number(price.amount) || 0
         await createProductPrice({
           product_id: savedProduct.id,
           amount: amountNum,
-          currency_code: price.currency_code || "COP",
           is_active: price.is_active,
         })
 
@@ -439,7 +428,6 @@ export default function AdminProductsPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 id: d.id,
-                currency_code: d.currency_code || "COP",
                 discount_amount: discAmount,
                 discount_percent: discPercent,
                 start_at: d.start_at || undefined,
@@ -455,7 +443,6 @@ export default function AdminProductsPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 product_id: savedProduct.id,
-                currency_code: d.currency_code || "COP",
                 discount_amount: discAmount,
                 discount_percent: discPercent,
                 start_at: d.start_at || undefined,
@@ -616,10 +603,10 @@ export default function AdminProductsPage() {
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge
-                      variant={product.units_in_stock > 0 ? "default" : "destructive"}
+                      variant={product.stock > 0 ? "default" : "destructive"}
                       className="tabular-nums"
                     >
-                      {product.units_in_stock}
+                      {product.stock}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">
@@ -739,12 +726,12 @@ export default function AdminProductsPage() {
                         <Package className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex-1">
-                        <Label htmlFor="units_in_stock" className="text-xs text-muted-foreground">Stock</Label>
+                        <Label htmlFor="stock" className="text-xs text-muted-foreground">Stock</Label>
                         <Input
-                          id="units_in_stock"
+                          id="stock"
                           type="number"
-                          value={form.units_in_stock}
-                          onChange={handleField("units_in_stock")}
+                          value={form.stock}
+                          onChange={handleField("stock")}
                           className="h-8 mt-1"
                         />
                       </div>

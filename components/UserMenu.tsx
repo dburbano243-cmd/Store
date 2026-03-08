@@ -46,7 +46,7 @@ export default function UserMenu() {
                   {user.email}
                 </p>
               </div>
-              {isAdmin && (
+              {isAdmin ? (
                 <Link
                   href="/admin"
                   onClick={() => setIsOpen(false)}
@@ -54,6 +54,15 @@ export default function UserMenu() {
                 >
                   <Settings className="h-4 w-4" />
                   Panel Admin
+                </Link>
+              ) : (
+                <Link
+                  href="/cuenta"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                  Mi Cuenta
                 </Link>
               )}
               <button

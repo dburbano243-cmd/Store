@@ -21,7 +21,6 @@ interface SupabaseProductMedia {
 interface SupabaseProductPrice {
   id: string
   amount: number
-  currency_code: string
   is_active: boolean
   source: string | null
   effective_at: string | null
@@ -30,7 +29,6 @@ interface SupabaseProductPrice {
 
 interface SupabaseProductDiscount {
   id: string
-  currency_code: string
   discount_amount: number | null
   discount_amount_in_cents: number | null
   discount_percent: number | null
@@ -42,7 +40,7 @@ interface SupabaseProduct {
   slug: string | null
   name: string
   description: string
-  units_in_stock: number
+  stock: number
   stock: number
   stars: number
   reviews: number
@@ -94,20 +92,12 @@ function mapProduct(row: SupabaseProduct): Product {
     })
     .map(mapMedia)
 
-  // Build prices by currency from the product_prices relation
+  // Get COP price from product_prices
   const activePrices = (row.product_prices ?? []).filter((p) => p.is_active)
-  const pricesByCurrency: Record<string, number> = {}
-  for (const p of activePrices) {
-    pricesByCurrency[p.currency_code] = p.amount
-  }
-
-  // Main COP price
-  const copPrice = pricesByCurrency["COP"] ?? 0
+  const copPrice = activePrices.length > 0 ? activePrices[0].amount : 0
 
   // Calculate price without discount from active discounts
-  const activeDiscounts = (row.product_price_discounts ?? []).filter(
-    (d) => d.is_active && d.currency_code === "COP"
-  )
+  const activeDiscounts = (row.product_price_discounts ?? []).filter((d) => d.is_active)
   let priceWithDiscount = copPrice
   if (activeDiscounts.length > 0) {
     const discount = activeDiscounts[0]
@@ -125,7 +115,6 @@ function mapProduct(row: SupabaseProduct): Product {
     const discount_amount = anyd.discount_amount ?? anyd.discount_amount_in_cents ?? undefined
     return {
       id: d.id,
-      currency_code: d.currency_code,
       discount_amount: discount_amount,
       discount_percent: d.discount_percent ?? undefined,
       metadata: anyd.metadata,
@@ -140,9 +129,8 @@ function mapProduct(row: SupabaseProduct): Product {
     description: row.description,
     price: copPrice,
     priceWithDiscount,
-    prices_by_currency: pricesByCurrency,
-    stock: row.stock ?? row.units_in_stock ?? 0,
-    units_in_stock: row.units_in_stock ?? row.stock ?? 0,
+    priceCOP: copPrice,
+    stock: row.stock ?? 0,
     stars: row.stars ?? 0,
     reviews: row.reviews ?? 0,
     features: row.product_features?.map((f) => f.name) ?? [],
@@ -159,8 +147,8 @@ const PRODUCT_SELECT = `
   *,
   product_features ( id, name ),
   product_media ( id, storage_path, url, media_type, content_type, file_name, file_size, position, alt_text, is_primary ),
-  product_prices ( id, amount, currency_code, is_active),
-  product_price_discounts ( id, currency_code, discount_amount, discount_percent, start_at, end_at, is_active, metadata)
+  product_prices ( id, amount, is_active),
+  product_price_discounts ( id, discount_amount, discount_percent, start_at, end_at, is_active, metadata)
 `
 
 /* ------------------------------------------------------------------ */
@@ -249,7 +237,7 @@ export interface ProductPayload {
   name: string
   slug?: string
   description: string
-  units_in_stock: number
+  stock: number
   stars?: number
   reviews?: number
 }
@@ -261,8 +249,8 @@ export async function createProduct(payload: ProductPayload): Promise<Product | 
       name: payload.name,
       slug: payload.slug ?? payload.name.toLowerCase().replace(/\s+/g, "-"),
       description: payload.description,
-      units_in_stock: payload.units_in_stock,
-      stock: payload.units_in_stock,
+      stock: payload.stock,
+      stock: payload.stock,
       stars: payload.stars ?? 0,
       reviews: payload.reviews ?? 0,
     })
@@ -285,9 +273,9 @@ export async function updateProduct(
   if (payload.name !== undefined) updateData.name = payload.name
   if (payload.slug !== undefined) updateData.slug = payload.slug
   if (payload.description !== undefined) updateData.description = payload.description
-  if (payload.units_in_stock !== undefined) {
-    updateData.units_in_stock = payload.units_in_stock
-    updateData.stock = payload.units_in_stock
+  if (payload.stock !== undefined) {
+    updateData.stock = payload.stock
+    updateData.stock = payload.stock
   }
   if (payload.stars !== undefined) updateData.stars = payload.stars
   if (payload.reviews !== undefined) updateData.reviews = payload.reviews
@@ -329,7 +317,6 @@ export async function deleteProduct(id: string): Promise<boolean> {
 export interface ProductPricePayload {
   product_id: string
   amount: number
-  currency_code?: string
   is_active?: boolean
 }
 
@@ -339,7 +326,6 @@ export async function createProductPrice(
   const insertRow = {
     product_id: payload.product_id,
     amount: payload.amount,
-    currency_code: payload.currency_code ?? "COP",
     is_active: payload.is_active ?? true,
   }
 
@@ -359,7 +345,6 @@ export async function createProductPrice(
 
 export interface ProductPriceDiscountPayload {
   product_id: string
-  currency_code?: string
   discount_amount?: number | null
   discount_percent?: number | null
   start_at?: string | null
@@ -373,7 +358,6 @@ export async function createProductDiscount(
 ): Promise<SupabaseProductDiscount | null> {
   const insertRow: Record<string, unknown> = {
     product_id: payload.product_id,
-    currency_code: payload.currency_code ?? "COP",
     discount_amount: payload.discount_amount ?? null,
     discount_percent: payload.discount_percent ?? null,
     start_at: payload.start_at || new Date().toISOString(),
@@ -402,7 +386,6 @@ export async function updateProductDiscount(
 ): Promise<SupabaseProductDiscount | null> {
   const updateData: Record<string, unknown> = {}
 
-  if (payload.currency_code !== undefined) updateData.currency_code = payload.currency_code
   if (payload.discount_amount !== undefined) updateData.discount_amount = payload.discount_amount
   if (payload.discount_percent !== undefined) updateData.discount_percent = payload.discount_percent
   if (payload.start_at !== undefined) updateData.start_at = payload.start_at

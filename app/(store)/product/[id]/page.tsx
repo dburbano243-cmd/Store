@@ -4,12 +4,13 @@ import { useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import useSWR from "swr"
-import { Star, Truck, Check, Minus, Plus } from "lucide-react"
-import { fetchProductBySlug } from "@/lib/products"
-import type { MediaFile } from "@/lib/types"
+import { Star, Truck, Check, Minus, Plus, Package, ChevronLeft, ChevronRight } from "lucide-react"
+import { fetchProductBySlug, fetchProducts } from "@/lib/products"
+import type { MediaFile, Product } from "@/lib/types"
 import { useCart } from "@/hooks/useCart"
 import Navbar from "@/components/Navbar"
 import CartSidebar from "@/components/CartSidebar"
+import ProductCard from "@/components/ProductCard"
 import imagePayments from "../../../../public/payments.png"
 
 export default function ProductPage() {
@@ -27,6 +28,20 @@ export default function ProductPage() {
     slug ? `product-${slug}` : null,
     () => fetchProductBySlug(slug)
   )
+
+  // Fetch all products for "Other Products" carousel
+  const { data: allProducts } = useSWR('all-products', fetchProducts)
+  
+  // Filter out current product
+  const otherProducts = useMemo(() => {
+    if (!allProducts || !product) return []
+    return allProducts.filter(p => p.id !== product.id)
+  }, [allProducts, product])
+  
+  // Carousel state for other products
+  const [carouselIndex, setCarouselIndex] = useState(0)
+  const productsPerView = 4
+  const maxIndex = Math.max(0, otherProducts.length - productsPerView)
 
   const mediaFiles = useMemo<MediaFile[]>(() => {
     if (!product) return []
@@ -67,12 +82,12 @@ export default function ProductPage() {
   const basePrice = product.price || 0
 
   // Compute best discount total for a given quantity based on product.discounts metadata.units
+  // All prices are in COP
   function bestDiscountTotalForQuantity(q: number) {
     const discounts = (product as any).discounts ?? []
     const candidates: number[] = []
     for (const d of discounts) {
       if (!d || !d.is_active) continue
-      if (d.currency_code !== "COP") continue
       const units = d.metadata?.units ? Number(d.metadata.units) : null
       const amount = Number(d.discount_amount ?? 0)
       if (!units || !amount) continue
@@ -282,6 +297,20 @@ export default function ProductPage() {
                 )}
               </div>
 
+              {/* Stock */}
+              <div className="flex items-center gap-2 mb-4">
+                <Package className="h-4 w-4 text-gray-600" />
+                {product.stock > 0 ? (
+                  <span className="text-sm font-medium text-gray-700">
+                    {product.stock} unidades disponibles
+                  </span>
+                ) : (
+                  <span className="text-sm font-medium text-red-600">
+                    Agotado
+                  </span>
+                )}
+              </div>
+
               {/* Shipping */}
               <div className="flex items-center gap-2 bg-lime-50 p-3 rounded-lg mb-4">
                 <Truck className="h-4 w-4 text-lime-600" />
@@ -413,6 +442,54 @@ export default function ProductPage() {
           </div>
         </div>
       </div>
+
+      {/* Other Products Carousel */}
+      {otherProducts.length > 0 && (
+        <div className="p-4 max-w-5xl mx-auto mt-8 mb-12">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Otros Productos</h2>
+          
+          <div className="relative">
+            {/* Navigation Buttons */}
+            {otherProducts.length > productsPerView && (
+              <>
+                <button
+                  onClick={() => setCarouselIndex(Math.max(0, carouselIndex - 1))}
+                  disabled={carouselIndex === 0}
+                  className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Anterior"
+                >
+                  <ChevronLeft className="h-5 w-5 text-gray-700" />
+                </button>
+                <button
+                  onClick={() => setCarouselIndex(Math.min(maxIndex, carouselIndex + 1))}
+                  disabled={carouselIndex >= maxIndex}
+                  className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Siguiente"
+                >
+                  <ChevronRight className="h-5 w-5 text-gray-700" />
+                </button>
+              </>
+            )}
+            
+            {/* Products Grid */}
+            <div className="overflow-hidden">
+              <div 
+                className="flex transition-transform duration-300 ease-in-out gap-4"
+                style={{ transform: `translateX(-${carouselIndex * (100 / productsPerView + 4)}%)` }}
+              >
+                {otherProducts.map((p) => (
+                  <div 
+                    key={p.id} 
+                    className="flex-shrink-0 w-full sm:w-1/2 md:w-1/3 lg:w-1/4"
+                  >
+                    <ProductCard product={p} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </div>

@@ -13,11 +13,7 @@ export async function POST(req: NextRequest) {
       email,
       address,
       city,
-      neighborhood,
       phone,
-      type_document_id,
-      document_number,
-      type_gender_id,
     } = body
 
     if (!user_id || !name || !email) {
@@ -48,11 +44,7 @@ export async function POST(req: NextRequest) {
         type_user_id: CUSTOMER_TYPE_USER_ID,
         address: address || null,
         city: city || null,
-        neighborhood: neighborhood || null,
         phone: phone || null,
-        type_document_id: type_document_id || null,
-        document_number: document_number || null,
-        type_gender_id: type_gender_id || null,
       },
       { onConflict: "id" }
     )

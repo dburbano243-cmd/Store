@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
 import type { User } from "@supabase/supabase-js"
 
@@ -30,12 +30,21 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => { },
 })
 
+// Cache for profile data to avoid duplicate fetches
+const profileCache: { [userId: string]: UserProfile | null } = {}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const initializedRef = useRef(false)
 
   const fetchProfile = async (userId: string) => {
+    // Return cached profile if available
+    if (profileCache[userId]) {
+      return profileCache[userId]
+    }
+    
     const { data, error } = await supabase
       .from("users")
       .select("id, name, email, type_user_id")
@@ -46,38 +55,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error fetching profile:", error)
       return null
     }
+    
+    // Cache the profile
+    profileCache[userId] = data as UserProfile
     return data as UserProfile
   }
 
   useEffect(() => {
-    const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+    // Prevent double initialization in StrictMode
+    if (initializedRef.current) return
+    initializedRef.current = true
+    
+    let isMounted = true
 
+    // Initial session check only
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return
+      
       if (session?.user) {
         setUser(session.user)
         const userProfile = await fetchProfile(session.user.id)
-        setProfile(userProfile)
-      }
-      setLoading(false)
-    }
-
-    initAuth()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null)
-
-      if (session?.user) {
-        const userProfile = await fetchProfile(session.user.id)
-        setProfile(userProfile)
+        if (isMounted) {
+          setProfile(userProfile)
+          setLoading(false)
+        }
       } else {
-        setProfile(null)
+        setLoading(false)
       }
-      setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    // Listen for auth changes (login/logout)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return
+      
+      // Only react to actual auth changes, not initial state
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        setUser(session?.user ?? null)
+
+        if (session?.user) {
+          const userProfile = await fetchProfile(session.user.id)
+          if (isMounted) setProfile(userProfile)
+        } else {
+          setProfile(null)
+        }
+      }
+    })
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signOut = async () => {
