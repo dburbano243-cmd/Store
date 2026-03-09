@@ -5,6 +5,7 @@ import ProductCard from "./ProductCard"
 import { fetchProducts } from "@/lib/products"
 
 export default function ProductGrid() {
+  // Cache de 2 horas configurado en SWRProvider
   const { data: products, error, isLoading } = useSWR("products", fetchProducts)
 
   if (isLoading) {

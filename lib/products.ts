@@ -2,6 +2,64 @@ import { supabase } from "./supabase"
 import type { Product, ProductMedia } from "./types"
 
 /* ------------------------------------------------------------------ */
+/*  LocalStorage cache for products (2 horas)                         */
+/* ------------------------------------------------------------------ */
+
+const PRODUCTS_CACHE_KEY = "products_cache"
+const PRODUCTS_CACHE_TTL = 2 * 60 * 60 * 1000 // 2 horas en milisegundos
+
+interface CachedProducts {
+  products: Product[]
+  timestamp: number
+}
+
+function getCachedProducts(): Product[] | null {
+  if (typeof window === 'undefined') return null
+  
+  try {
+    const cached = localStorage.getItem(PRODUCTS_CACHE_KEY)
+    if (!cached) return null
+    
+    const parsed: CachedProducts = JSON.parse(cached)
+    const now = Date.now()
+    
+    // Verificar si no ha expirado (2 horas)
+    if (now - parsed.timestamp < PRODUCTS_CACHE_TTL) {
+      return parsed.products
+    }
+    
+    // Expirado, eliminar
+    localStorage.removeItem(PRODUCTS_CACHE_KEY)
+    return null
+  } catch {
+    return null
+  }
+}
+
+function setCachedProducts(products: Product[]): void {
+  if (typeof window === 'undefined') return
+  
+  try {
+    const cached: CachedProducts = {
+      products,
+      timestamp: Date.now(),
+    }
+    localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(cached))
+  } catch {
+    // localStorage lleno o no disponible, ignorar
+  }
+}
+
+export function clearProductsCache(): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(PRODUCTS_CACHE_KEY)
+  } catch {
+    // Ignorar
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Supabase row shape (raw query result)                             */
 /* ------------------------------------------------------------------ */
 
@@ -156,6 +214,13 @@ const PRODUCT_SELECT = `
 /* ------------------------------------------------------------------ */
 
 export async function fetchProducts(): Promise<Product[]> {
+  // Primero intentar obtener del cache de localStorage
+  const cached = getCachedProducts()
+  if (cached && cached.length > 0) {
+    return cached
+  }
+  
+  // Si no hay cache, obtener de la base de datos
   try {
     const { data, error } = await supabase
       .from("products")
@@ -172,7 +237,12 @@ export async function fetchProducts(): Promise<Product[]> {
       return []
     }
 
-    return (data as unknown as SupabaseProduct[]).map(mapProduct)
+    const products = (data as unknown as SupabaseProduct[]).map(mapProduct)
+    
+    // Guardar en cache
+    setCachedProducts(products)
+    
+    return products
   } catch (err) {
     console.error("Exception fetching products:", err)
     return []

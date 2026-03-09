@@ -1,10 +1,10 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { ShoppingBag, CreditCard, Eye, EyeOff, Loader2, ArrowLeft, Lock, Minus, Plus, Trash2, Truck } from "lucide-react"
+import { ShoppingBag, CreditCard, Loader2, ArrowLeft, Lock, Minus, Plus, Trash2, Truck, User, MapPin, Check } from "lucide-react"
 import { useCart } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { useToast } from "@/hooks/use-toast"
@@ -16,7 +16,7 @@ import CitySelect from "@/components/CitySelect"
 export default function CheckoutPage() {
   const router = useRouter()
   const { cartItems, getTotalPrice, getTotalItems, isHydrated, updateQuantity, removeFromCart } = useCart()
-  
+
   // Shipping cost logic: free if 5+ items, otherwise 10,000 COP
   const SHIPPING_COST = 10000
   const FREE_SHIPPING_THRESHOLD = 5
@@ -28,27 +28,59 @@ export default function CheckoutPage() {
   const { toast } = useToast()
 
   const [isCartOpen, setIsCartOpen] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
 
-  // Mode: register or login
-  const [mode, setMode] = useState<"register" | "login">("register")
-
-  // Section 1: Account / Datos del pedido
-  const [accountForm, setAccountForm] = useState({
+  // Section 1: Identificacion
+  const [identificationForm, setIdentificationForm] = useState({
     email: "",
     name: "",
-    password: "",
-    confirmPassword: "",
+    documentNumber: "",
   })
 
-  // Section 2: Payment / Datos de pago y envio
-  const [paymentForm, setPaymentForm] = useState({
+  // Section 2: Envio
+  const [shippingForm, setShippingForm] = useState({
     phone: "",
-    city: "",
     address: "",
+    city: "",
+    neighborhood: "",
+    additionalInfo: "",
+    receiverName: "",
   })
+
+  // Track which section is active
+  const [activeSection, setActiveSection] = useState<1 | 2>(1)
+
+  // Check if identification is complete
+  const isIdentificationComplete = useMemo(() => {
+    return (
+      identificationForm.email.trim() !== "" &&
+      identificationForm.name.trim() !== "" &&
+      identificationForm.documentNumber.trim() !== "" &&
+      identificationForm.documentNumber.trim().length >= 6
+    )
+  }, [identificationForm])
+
+  // Check if shipping is complete
+  const isShippingComplete = useMemo(() => {
+    return (
+      shippingForm.phone.trim() !== "" &&
+      shippingForm.address.trim() !== "" &&
+      shippingForm.city.trim() !== "" &&
+      shippingForm.neighborhood.trim() !== "" &&
+      shippingForm.receiverName.trim() !== ""
+    )
+  }, [shippingForm])
+
+  // Can submit only when both sections are complete
+  const canSubmit = isIdentificationComplete && isShippingComplete
+
+  // Auto-advance to section 2 when section 1 is complete
+  useEffect(() => {
+    if (isIdentificationComplete && activeSection === 1) {
+      setActiveSection(2)
+    }
+  }, [isIdentificationComplete, activeSection])
 
   // Pre-fill when user is logged in
   useEffect(() => {
@@ -61,29 +93,29 @@ export default function CheckoutPage() {
           .single()
 
         if (data) {
-          setAccountForm({
+          setIdentificationForm({
             email: data.email || profile.email || "",
             name: data.name || profile.name || "",
-            password: "",
-            confirmPassword: "",
+            documentNumber: "",
           })
-          setPaymentForm({
+          setShippingForm(prev => ({
+            ...prev,
             phone: data.phone || "",
             city: data.city || "",
             address: data.address || "",
-          })
+          }))
         }
       }
       prefill()
     }
   }, [user, profile])
 
-  const updateAccount = (field: string, value: string) => {
-    setAccountForm((prev) => ({ ...prev, [field]: value }))
+  const updateIdentification = (field: string, value: string) => {
+    setIdentificationForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  const updatePayment = (field: string, value: string) => {
-    setPaymentForm((prev) => ({ ...prev, [field]: value }))
+  const updateShipping = (field: string, value: string) => {
+    setShippingForm((prev) => ({ ...prev, [field]: value }))
   }
 
   // Wait for cart to hydrate from localStorage before rendering anything
@@ -122,108 +154,77 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isSubmitting) return
+    if (isSubmitting || !canSubmit) return
     setError("")
     setIsSubmitting(true)
 
     try {
       let customerId = user?.id ?? null
 
-      // If user is not logged in, handle registration or login
+      // If user is not logged in, auto-register with document number as password
       if (!user) {
-        if (mode === "register") {
-          // Validate passwords
-          if (accountForm.password !== accountForm.confirmPassword) {
-            setError("Las contrasenas no coinciden")
-            setIsSubmitting(false)
-            return
-          }
-          if (accountForm.password.length < 6) {
-            setError("La contrasena debe tener al menos 6 caracteres")
-            setIsSubmitting(false)
-            return
-          }
+        // Check if email already exists
+        const { data: existingUser } = await supabase.auth.signInWithPassword({
+          email: identificationForm.email,
+          password: identificationForm.documentNumber,
+        })
 
-          // 1. Register via Supabase Auth
+        if (existingUser?.user) {
+          // User exists and password (document) matches
+          customerId = existingUser.user.id
+        } else {
+          // Try to register new user
           const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: accountForm.email,
-            password: accountForm.password,
+            email: identificationForm.email,
+            password: identificationForm.documentNumber,
             options: {
               emailRedirectTo: `${window.location.origin}/`,
-              data: { name: accountForm.name },
+              data: { name: identificationForm.name },
             },
           })
 
           if (authError) {
-            if (authError.message.includes("rate") || authError.status === 429) {
+            // If user already exists but wrong password, just continue as guest
+            if (authError.message.includes("already registered")) {
+              customerId = null
+            } else if (authError.message.includes("rate") || authError.status === 429) {
               setError("Demasiados intentos. Por favor espera unos minutos e intenta de nuevo.")
+              setIsSubmitting(false)
+              return
             } else {
-              setError(authError.message)
+              // Continue anyway, order will be created with guest ID
+              customerId = null
             }
-            setIsSubmitting(false)
-            return
-          }
+          } else if (authData?.user) {
+            customerId = authData.user.id
 
-          if (!authData.user) {
-            setError("No se pudo crear el usuario")
-            setIsSubmitting(false)
-            return
-          }
-
-          customerId = authData.user.id
-
-          // 2. Upsert profile via server API
-          const profileRes = await fetch("/api/register-profile", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              user_id: authData.user.id,
-              name: accountForm.name,
-              email: accountForm.email,
-              address: paymentForm.address || null,
-              city: paymentForm.city || null,
-              phone: paymentForm.phone || null,
-            }),
-          })
-
-          if (!profileRes.ok) {
-            const profileData = await profileRes.json()
-            setError(`Error guardando perfil: ${profileData.error || "Error desconocido"}`)
-            setIsSubmitting(false)
-            return
-          }
-
-          // 3. Auto-login after registration
-          const { error: loginError } = await supabase.auth.signInWithPassword({
-            email: accountForm.email,
-            password: accountForm.password,
-          })
-
-          if (loginError) {
-            // If auto-login fails, show message but continue with order
-            toast({
-              title: "Cuenta creada",
-              description: "Tu cuenta fue creada. Revisa tu correo para confirmarla.",
+            // Upsert profile via server API
+            await fetch("/api/register-profile", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_id: authData.user.id,
+                name: identificationForm.name,
+                email: identificationForm.email,
+                address: shippingForm.address || null,
+                city: shippingForm.city || null,
+                phone: shippingForm.phone || null,
+              }),
             })
           }
-        } else {
-          // Login mode
-          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-            email: accountForm.email,
-            password: accountForm.password,
-          })
-
-          if (loginError) {
-            setError("Correo o contrasena incorrectos")
-            setIsSubmitting(false)
-            return
-          }
-
-          customerId = loginData.user?.id ?? null
         }
       }
 
-      // Now create the order (same logic as old CheckoutModal)
+      // Build shipment_data JSON with additional shipping info
+      const shipmentData = {
+        address: shippingForm.address,
+        city: shippingForm.city,
+        neighborhood: shippingForm.neighborhood,
+        additional_info: shippingForm.additionalInfo,
+        receiver_name: shippingForm.receiverName,
+      }
+
+      // Now create the order
       const items = cartItems.map((item) => ({
         product_id: item.id,
         quantity: Number(item.quantity || 1),
@@ -246,12 +247,14 @@ export default function CheckoutPage() {
           total: orderTotal,
           return_url: returnUrl,
           customer: {
-            name: accountForm.name,
-            email: accountForm.email,
-            phone: paymentForm.phone,
-            address: paymentForm.address,
-            city: paymentForm.city,
+            name: identificationForm.name,
+            email: identificationForm.email,
+            document_number: identificationForm.documentNumber,
+            phone: shippingForm.phone,
+            address: shippingForm.address,
+            city: shippingForm.city,
           },
+          shipment_data: shipmentData,
         }),
       })
 
@@ -276,8 +279,8 @@ export default function CheckoutPage() {
   }
 
   const inputClass =
-    "w-full px-3 py-2.5 border border-input rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
-  const labelClass = "block text-sm font-medium text-foreground mb-1.5"
+    "w-full px-4 py-3 border border-input rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
+  const labelClass = "block text-sm font-medium text-foreground mb-2"
 
   // Get the preferred image for each cart item
   const getItemImage = (item: any) => {
@@ -326,15 +329,15 @@ export default function CheckoutPage() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* LEFT COLUMN: Order Summary */}
           <div className="w-full lg:w-5/12">
-            <div className="bg-card border border-border rounded-xl p-6 sticky top-24">
+            <div className="bg-card border border-border rounded-2xl p-6 sticky top-24">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-9 h-9 bg-lime-100 rounded-full flex items-center justify-center">
-                  <ShoppingBag className="h-4 w-4 text-lime-700" />
+                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                  <ShoppingBag className="h-5 w-5 text-primary" />
                 </div>
                 <h2 className="text-lg font-semibold text-foreground">Resumen de tu pedido</h2>
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4 max-h-[300px] overflow-y-auto pr-2">
                 {cartItems.map((item) => {
                   const imgSrc = getItemImage(item)
                   const qty = Number(item.quantity || 1)
@@ -343,26 +346,25 @@ export default function CheckoutPage() {
                   const lineTotal = item.price * qty
                   const originalLineTotal = basePrice * qty
                   return (
-                    <div key={item.id} className="flex gap-4">
-                      <div className="relative w-20 h-20 flex-shrink-0 bg-muted rounded-lg overflow-hidden">
+                    <div key={item.id} className="flex gap-4 pb-4 border-b border-border last:border-0 last:pb-0">
+                      <div className="relative w-16 h-16 flex-shrink-0 bg-muted rounded-lg overflow-hidden">
                         <Image
                           src={imgSrc}
                           alt={item.name}
                           fill
                           className="object-cover"
-                          sizes="80px"
+                          sizes="64px"
                         />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-medium text-foreground truncate">{item.name}</h3>
-                        {/* Price per unit */}
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {hasDiscount && (
                             <span className="text-xs line-through text-muted-foreground">
                               ${basePrice.toLocaleString("es-CO")}
                             </span>
                           )}
-                          <span className="text-sm font-semibold text-foreground">
+                          <span className="text-sm text-muted-foreground">
                             ${item.price.toLocaleString("es-CO")} c/u
                           </span>
                         </div>
@@ -372,16 +374,16 @@ export default function CheckoutPage() {
                             type="button"
                             onClick={() => updateQuantity(item.id, qty - 1)}
                             disabled={qty <= 1}
-                            className="w-7 h-7 rounded border border-input flex items-center justify-center hover:bg-accent transition-colors disabled:opacity-40"
+                            className="w-6 h-6 rounded border border-input flex items-center justify-center hover:bg-accent transition-colors disabled:opacity-40"
                             aria-label="Reducir cantidad"
                           >
                             <Minus className="h-3 w-3" />
                           </button>
-                          <span className="text-sm font-medium w-6 text-center">{qty}</span>
+                          <span className="text-sm font-medium w-5 text-center">{qty}</span>
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, qty + 1)}
-                            className="w-7 h-7 rounded border border-input flex items-center justify-center hover:bg-accent transition-colors"
+                            className="w-6 h-6 rounded border border-input flex items-center justify-center hover:bg-accent transition-colors"
                             aria-label="Aumentar cantidad"
                           >
                             <Plus className="h-3 w-3" />
@@ -389,10 +391,10 @@ export default function CheckoutPage() {
                           <button
                             type="button"
                             onClick={() => removeFromCart(item.id)}
-                            className="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            className="ml-auto w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                             aria-label="Eliminar producto"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-3 w-3" />
                           </button>
                         </div>
                       </div>
@@ -402,7 +404,7 @@ export default function CheckoutPage() {
                             ${originalLineTotal.toLocaleString("es-CO")}
                           </p>
                         )}
-                        <p className="text-sm font-bold text-foreground">
+                        <p className="text-sm font-semibold text-foreground">
                           ${lineTotal.toLocaleString("es-CO")}
                         </p>
                       </div>
@@ -411,7 +413,7 @@ export default function CheckoutPage() {
                 })}
               </div>
 
-              <div className="border-t border-border mt-6 pt-4 flex flex-col gap-2">
+              <div className="border-t border-border mt-6 pt-4 flex flex-col gap-3">
                 {/* Subtotal */}
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Subtotal</span>
@@ -419,45 +421,45 @@ export default function CheckoutPage() {
                     ${subtotal.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </span>
                 </div>
-                
+
                 {/* Shipping */}
                 <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <Truck className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Envio</span>
                   </div>
                   {shippingCost === 0 ? (
-                    <span className="text-sm font-medium text-lime-600">Gratis</span>
+                    <span className="text-sm font-medium text-green-600">Gratis</span>
                   ) : (
                     <span className="text-sm text-foreground">
                       ${shippingCost.toLocaleString("es-CO")}
                     </span>
                   )}
                 </div>
-                
+
                 {/* Free shipping hint */}
                 {shippingCost > 0 && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
                     Agrega {FREE_SHIPPING_THRESHOLD - totalItems} producto{FREE_SHIPPING_THRESHOLD - totalItems > 1 ? 's' : ''} mas para envio gratis
                   </p>
                 )}
-                
+
                 {/* Total */}
-                <div className="flex justify-between items-center pt-2 border-t border-border">
-                  <span className="text-base font-semibold text-foreground">Total</span>
-                  <span className="text-xl font-bold text-lime-600">
+                <div className="flex justify-between items-center pt-3 border-t border-border">
+                  <span className="text-base font-semibold text-foreground">Total a pagar</span>
+                  <span className="text-2xl font-bold text-foreground">
                     ${totalWithShipping.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </span>
                 </div>
               </div>
 
               {/* Payment security notice */}
-              <div className="mt-6 bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-2.5">
-                <CreditCard className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="mt-6 bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                <CreditCard className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <span className="text-xs font-medium text-blue-800">Pago seguro con Wompi</span>
-                  <p className="text-xs text-blue-600 mt-0.5">
-                    Seras redirigido al checkout seguro de Wompi para completar tu pago
+                  <span className="text-sm font-medium text-blue-800">Pago seguro con Wompi</span>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Seras redirigido al checkout seguro para completar tu pago
                   </p>
                 </div>
               </div>
@@ -467,240 +469,252 @@ export default function CheckoutPage() {
           {/* RIGHT COLUMN: Forms */}
           <div className="w-full lg:w-7/12">
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                {/* Error */}
-                {error && (
-                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
-                    {error}
+              {/* Error */}
+              {error && (
+                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+
+              {/* Progress indicator */}
+              <div className="flex items-center gap-4 mb-2">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${isIdentificationComplete
+                    ? "bg-green-500 text-white"
+                    : activeSection === 1
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                    }`}>
+                    {isIdentificationComplete ? <Check className="h-4 w-4" /> : "1"}
                   </div>
-                )}
+                  <span className={`text-sm font-medium ${activeSection === 1 ? "text-foreground" : "text-muted-foreground"}`}>
+                    Identificacion
+                  </span>
+                </div>
+                <div className="flex-1 h-px bg-border" />
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${isShippingComplete
+                    ? "bg-green-500 text-white"
+                    : activeSection === 2
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                    }`}>
+                    {isShippingComplete ? <Check className="h-4 w-4" /> : "2"}
+                  </div>
+                  <span className={`text-sm font-medium ${activeSection === 2 ? "text-foreground" : "text-muted-foreground"}`}>
+                    Envio
+                  </span>
+                </div>
+              </div>
 
-                {/* SECTION 1: Account data */}
-                <div className="bg-card border border-border rounded-xl p-6">
-                  <h3 className="text-base font-semibold text-foreground mb-1">
-                    {user ? "Datos de tu pedido" : mode === "register" ? "Datos de tu pedido" : "Inicia sesion para tu pedido"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-5">
-                    {user
-                      ? "Verifica que tus datos sean correctos"
-                      : mode === "register"
-                        ? "Necesitamos algunos datos para procesar tu compra"
-                        : "Ingresa con tu cuenta para continuar"}
-                  </p>
-
-                  {mode === "login" && !user ? (
-                    <div className="flex flex-col gap-4">
-                      <div>
-                        <label htmlFor="ck-email" className={labelClass}>Correo electronico *</label>
-                        <input
-                          id="ck-email"
-                          type="email"
-                          required
-                          value={accountForm.email}
-                          onChange={(e) => updateAccount("email", e.target.value)}
-                          className={inputClass}
-                          placeholder="tu@correo.com"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="ck-password" className={labelClass}>Contrasena *</label>
-                        <div className="relative">
-                          <input
-                            id="ck-password"
-                            type={showPassword ? "text" : "password"}
-                            required
-                            value={accountForm.password}
-                            onChange={(e) => updateAccount("password", e.target.value)}
-                            className={`${inputClass} pr-10`}
-                            placeholder="Tu contrasena"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </div>
+              {/* SECTION 1: Identificacion */}
+              <div
+                className={`bg-card border rounded-2xl p-6 transition-all ${activeSection === 1 ? "border-primary shadow-sm" : "border-border"
+                  }`}
+              >
+                <div
+                  className="flex items-center gap-3 mb-5 cursor-pointer"
+                  onClick={() => setActiveSection(1)}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isIdentificationComplete ? "bg-green-100" : "bg-primary/10"
+                    }`}>
+                    <User className={`h-5 w-5 ${isIdentificationComplete ? "text-green-600" : "text-primary"}`} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-foreground">Identificacion</h3>
+                    <p className="text-sm text-muted-foreground">Tus datos personales para la compra</p>
+                  </div>
+                  {isIdentificationComplete && (
+                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                      <Check className="h-4 w-4 text-white" />
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-4">
-                      {/* Email */}
-                      <div>
-                        <label htmlFor="ck-email" className={labelClass}>Correo electronico *</label>
-                        <input
-                          id="ck-email"
-                          type="email"
-                          required
-                          value={accountForm.email}
-                          onChange={(e) => updateAccount("email", e.target.value)}
-                          className={inputClass}
-                          placeholder="tu@correo.com"
-                          readOnly={!!user}
-                        />
-                      </div>
-
-                      {/* Name */}
-                      <div>
-                        <label htmlFor="ck-name" className={labelClass}>Nombre completo *</label>
-                        <input
-                          id="ck-name"
-                          type="text"
-                          required
-                          value={accountForm.name}
-                          onChange={(e) => updateAccount("name", e.target.value)}
-                          className={inputClass}
-                          placeholder="Tu nombre completo"
-                        />
-                      </div>
-
-                      {/* Password (only for new users) */}
-                      {!user && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label htmlFor="ck-password" className={labelClass}>Contrasena *</label>
-                            <div className="relative">
-                              <input
-                                id="ck-password"
-                                type={showPassword ? "text" : "password"}
-                                required
-                                value={accountForm.password}
-                                onChange={(e) => updateAccount("password", e.target.value)}
-                                className={`${inputClass} pr-10`}
-                                placeholder="Min. 6 caracteres"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div>
-                            <label htmlFor="ck-confirm-password" className={labelClass}>Confirmar contrasena *</label>
-                            <input
-                              id="ck-confirm-password"
-                              type={showPassword ? "text" : "password"}
-                              required
-                              value={accountForm.confirmPassword}
-                              onChange={(e) => updateAccount("confirmPassword", e.target.value)}
-                              className={inputClass}
-                              placeholder="Repite la contrasena"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Toggle register/login (only if not logged in) */}
-                  {!user && (
-                    <p className="text-center text-sm text-muted-foreground mt-5">
-                      {mode === "register" ? (
-                        <>
-                          {"Ya tienes cuenta? "}
-                          <button
-                            type="button"
-                            onClick={() => { setMode("login"); setError("") }}
-                            className="text-foreground font-medium hover:underline"
-                          >
-                            Inicia sesion
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          {"No tienes cuenta? "}
-                          <button
-                            type="button"
-                            onClick={() => { setMode("register"); setError("") }}
-                            className="text-foreground font-medium hover:underline"
-                          >
-                            Completa tus datos
-                          </button>
-                        </>
-                      )}
-                    </p>
                   )}
                 </div>
 
-                {/* SECTION 2: Payment data (shown in register mode or when logged in) */}
-                {(mode === "register" || user) && (
-                  <div className="bg-card border border-border rounded-xl p-6">
-                    <h3 className="text-base font-semibold text-foreground mb-1">Datos de pago y envio</h3>
-                    <p className="text-sm text-muted-foreground mb-5">Informacion necesaria para procesar tu pago y envio</p>
+                <div className={`flex flex-col gap-4 ${activeSection !== 1 && isIdentificationComplete ? "opacity-60" : ""}`}>
+                  {/* Email */}
+                  <div>
+                    <label htmlFor="ck-email" className={labelClass}>Correo electronico *</label>
+                    <input
+                      id="ck-email"
+                      type="email"
+                      required
+                      value={identificationForm.email}
+                      onChange={(e) => updateIdentification("email", e.target.value)}
+                      className={inputClass}
+                      placeholder="tu@correo.com"
+                      readOnly={!!user}
+                    />
+                  </div>
 
-                    <div className="flex flex-col gap-4">
-                      {/* Address */}
-                      <div>
-                        <label htmlFor="ck-address" className={labelClass}>Direccion de entrega *</label>
-                        <input
-                          id="ck-address"
-                          type="text"
-                          required
-                          value={paymentForm.address}
-                          onChange={(e) => updatePayment("address", e.target.value)}
-                          className={inputClass}
-                          placeholder="Calle 123 #4-5, Apto 201"
-                        />
-                      </div>
+                  {/* Name */}
+                  <div>
+                    <label htmlFor="ck-name" className={labelClass}>Nombre completo *</label>
+                    <input
+                      id="ck-name"
+                      type="text"
+                      required
+                      value={identificationForm.name}
+                      onChange={(e) => updateIdentification("name", e.target.value)}
+                      className={inputClass}
+                      placeholder="Tu nombre completo"
+                    />
+                  </div>
 
-                      {/* Phone */}
-                      <div>
-                        <label htmlFor="ck-phone" className={labelClass}>Telefono *</label>
-                        <input
-                          id="ck-phone"
-                          type="tel"
-                          required
-                          value={paymentForm.phone}
-                          onChange={(e) => updatePayment("phone", e.target.value)}
-                          className={inputClass}
-                          placeholder="3001234567"
-                        />
-                      </div>
+                  {/* Document Number */}
+                  <div>
+                    <label htmlFor="ck-document" className={labelClass}>Numero de documento *</label>
+                    <input
+                      id="ck-document"
+                      type="text"
+                      required
+                      value={identificationForm.documentNumber}
+                      onChange={(e) => updateIdentification("documentNumber", e.target.value.replace(/\D/g, ""))}
+                      className={inputClass}
+                      placeholder="Cedula o NIT, Pasaporte, ETC"
+                      minLength={6}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">Minimo 6 digitos</p>
+                  </div>
+                </div>
+              </div>
 
-                      {/* City */}
+              {/* SECTION 2: Envio */}
+              <div
+                className={`bg-card border rounded-2xl p-6 transition-all ${activeSection === 2 ? "border-primary shadow-sm" : "border-border"
+                  } ${!isIdentificationComplete ? "opacity-50 pointer-events-none" : ""}`}
+              >
+                <div
+                  className="flex items-center gap-3 mb-5 cursor-pointer"
+                  onClick={() => isIdentificationComplete && setActiveSection(2)}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isShippingComplete ? "bg-green-100" : "bg-primary/10"
+                    }`}>
+                    <MapPin className={`h-5 w-5 ${isShippingComplete ? "text-green-600" : "text-primary"}`} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-foreground">Datos de envio</h3>
+                    <p className="text-sm text-muted-foreground">Donde enviaremos tu pedido</p>
+                  </div>
+                  {isShippingComplete && (
+                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                      <Check className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                </div>
+
+                {isIdentificationComplete && (
+                  <div className="flex flex-col gap-4">
+                    {/* Phone */}
+                    <div>
+                      <label htmlFor="ck-phone" className={labelClass}>Telefono de contacto *</label>
+                      <input
+                        id="ck-phone"
+                        type="tel"
+                        required
+                        value={shippingForm.phone}
+                        onChange={(e) => updateShipping("phone", e.target.value)}
+                        className={inputClass}
+                        placeholder="3001234567"
+                      />
+                    </div>
+
+                    {/* Receiver Name */}
+                    <div>
+                      <label htmlFor="ck-receiver" className={labelClass}>Nombre de quien recibe *</label>
+                      <input
+                        id="ck-receiver"
+                        type="text"
+                        required
+                        value={shippingForm.receiverName}
+                        onChange={(e) => updateShipping("receiverName", e.target.value)}
+                        className={inputClass}
+                        placeholder="Nombre de la persona que recibira el pedido"
+                      />
+                    </div>
+
+                    {/* Address */}
+                    <div>
+                      <label htmlFor="ck-address" className={labelClass}>Direccion *</label>
+                      <input
+                        id="ck-address"
+                        type="text"
+                        required
+                        value={shippingForm.address}
+                        onChange={(e) => updateShipping("address", e.target.value)}
+                        className={inputClass}
+                        placeholder="Calle 123 #4-5, Apto 201"
+                      />
+                    </div>
+
+                    {/* City and Neighborhood */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="ck-city" className={labelClass}>Ciudad *</label>
                         <CitySelect
                           id="ck-city"
                           required
-                          value={paymentForm.city}
-                          onChange={(val) => updatePayment("city", val)}
+                          value={shippingForm.city}
+                          onChange={(val) => updateShipping("city", val)}
                           className={inputClass}
                           placeholder="Busca tu ciudad..."
                         />
                       </div>
+                      <div>
+                        <label htmlFor="ck-neighborhood" className={labelClass}>Barrio *</label>
+                        <input
+                          id="ck-neighborhood"
+                          type="text"
+                          required
+                          value={shippingForm.neighborhood}
+                          onChange={(e) => updateShipping("neighborhood", e.target.value)}
+                          className={inputClass}
+                          placeholder="Nombre del barrio"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Additional Info */}
+                    <div>
+                      <label htmlFor="ck-additional" className={labelClass}>Informacion adicional</label>
+                      <textarea
+                        id="ck-additional"
+                        value={shippingForm.additionalInfo}
+                        onChange={(e) => updateShipping("additionalInfo", e.target.value)}
+                        className={`${inputClass} resize-none`}
+                        placeholder="Instrucciones especiales de entrega, referencias, etc."
+                        rows={3}
+                      />
                     </div>
                   </div>
                 )}
+              </div>
 
-                {/* Submit */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-lime-500 text-white font-bold py-4 rounded-xl hover:bg-lime-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Procesando tu pedido...
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="h-4 w-4" />
-                      Continuar con mi compra
-                    </>
-                  )}
-                </button>
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={isSubmitting || !canSubmit}
+                className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Procesando tu pedido...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4" />
+                    {canSubmit ? "Continuar al pago" : "Completa todos los datos"}
+                  </>
+                )}
+              </button>
 
-                {/* Trust badge */}
-                <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-                  <Lock className="h-3 w-3" />
-                  Tus datos estan protegidos y tu pago es 100% seguro
-                </p>
-              </form>
+              {/* Trust badge */}
+              <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+                <Lock className="h-3 w-3" />
+                Tus datos estan protegidos y tu pago es 100% seguro
+              </p>
+            </form>
           </div>
         </div>
       </div>
