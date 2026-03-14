@@ -7,9 +7,13 @@ import {
   Package,
   Store,
   ChevronUp,
+  ChevronDown,
   Settings,
   ShoppingBag,
   Truck,
+  FileText,
+  Layers,
+  PanelLeft,
 } from "lucide-react"
 
 import {
@@ -23,35 +27,74 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 
-const mainNav = [
-  {
-    label: "Dashboard",
-    href: "/admin/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "Productos",
-    href: "/admin/products",
-    icon: Package,
-  },
-  {
-    label: "Órdenes",
-    href: "/admin/orders",
-    icon: ShoppingBag,
-  },
-  {
-    label: "Envíos",
-    href: "/admin/shipments",
-    icon: Truck,
-  },
-]
+// Navegación del Dashboard (solo)
+const dashboardNav = {
+  label: "Dashboard",
+  href: "/admin/dashboard",
+  icon: LayoutDashboard,
+}
+
+// Navegación del Page Builder
+const pageBuilderNav = {
+  label: "Page Builder",
+  icon: PanelLeft,
+  items: [
+    {
+      label: "Páginas",
+      href: "/admin/pages",
+      icon: FileText,
+    },
+    {
+      label: "Componentes",
+      href: "/admin/components",
+      icon: Layers,
+    },
+  ],
+}
+
+// Navegación de la Tienda
+const storeNav = {
+  label: "Tienda",
+  icon: Store,
+  items: [
+    {
+      label: "Productos",
+      href: "/admin/products",
+      icon: Package,
+    },
+    {
+      label: "Órdenes",
+      href: "/admin/orders",
+      icon: ShoppingBag,
+    },
+    {
+      label: "Envíos",
+      href: "/admin/shipments",
+      icon: Truck,
+    },
+  ],
+}
 
 export default function AdminSidebar() {
   const pathname = usePathname()
+
+  const isActiveRoute = (href: string) => 
+    pathname === href || pathname.startsWith(href + "/")
+
+  const isGroupActive = (items: { href: string }[]) =>
+    items.some((item) => isActiveRoute(item.href))
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -77,28 +120,103 @@ export default function AdminSidebar() {
       <SidebarSeparator />
 
       <SidebarContent>
+        {/* Dashboard - Solo */}
         <SidebarGroup>
           <SidebarGroupLabel>General</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNav.map((item) => {
-                const isActive =
-                  pathname === item.href || pathname.startsWith(item.href + "/")
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={item.label}
-                    >
-                      <Link href={item.href}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                      </Link>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActiveRoute(dashboardNav.href)}
+                  tooltip={dashboardNav.label}
+                >
+                  <Link href={dashboardNav.href}>
+                    <dashboardNav.icon className="h-4 w-4" />
+                    <span>{dashboardNav.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Page Builder - Colapsable */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Contenido</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <Collapsible
+                defaultOpen={isGroupActive(pageBuilderNav.items)}
+                className="group/collapsible"
+              >
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip={pageBuilderNav.label}>
+                      <pageBuilderNav.icon className="h-4 w-4" />
+                      <span>{pageBuilderNav.label}</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
                     </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {pageBuilderNav.items.map((item) => (
+                        <SidebarMenuSubItem key={item.href}>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={isActiveRoute(item.href)}
+                          >
+                            <Link href={item.href}>
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.label}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Tienda - Colapsable */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Comercio</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <Collapsible
+                defaultOpen={isGroupActive(storeNav.items)}
+                className="group/collapsible"
+              >
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip={storeNav.label}>
+                      <storeNav.icon className="h-4 w-4" />
+                      <span>{storeNav.label}</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {storeNav.items.map((item) => (
+                        <SidebarMenuSubItem key={item.href}>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={isActiveRoute(item.href)}
+                          >
+                            <Link href={item.href}>
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.label}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -109,9 +227,9 @@ export default function AdminSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Configuracion">
-              <Link href="/admin" className="text-sidebar-foreground/70">
+              <Link href="/admin/settings" className="text-sidebar-foreground/70">
                 <Settings className="h-4 w-4" />
-                <span>Configuracion</span>
+                <span>Configuración</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
