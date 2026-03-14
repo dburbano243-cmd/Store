@@ -808,15 +808,7 @@ export default function AdminProductsPage() {
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="price-currency">Moneda</Label>
-                      <Input
-                        id="price-currency"
-                        value={price.currency_code}
-                        onChange={handlePriceField("currency_code")}
-                        placeholder="COP"
-                      />
-                    </div>
+
                     <div className="space-y-2">
                       <Label>Estado</Label>
                       <div className="flex items-center gap-3 h-10">
@@ -895,14 +887,7 @@ export default function AdminProductsPage() {
                               placeholder="5000"
                             />
                           </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Moneda</Label>
-                            <Input
-                              value={d.currency_code}
-                              onChange={handleDiscountField(actualIdx, "currency_code")}
-                              placeholder="COP"
-                            />
-                          </div>
+
                           <div className="space-y-1">
                             <Label className="text-xs">Fecha inicio</Label>
                             <Input

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { CheckCircle, XCircle, Clock, Loader2 } from "lucide-react"
 import { useCart } from "@/hooks/useCart"
@@ -12,7 +12,7 @@ interface TransactionData {
   currency: string
 }
 
-export default function PaymentResponse() {
+function PaymentResponseContent() {
   const searchParams = useSearchParams()
   const { clearCart } = useCart()
   const [transaction, setTransaction] = useState<TransactionData | null>(null)
@@ -166,5 +166,24 @@ export default function PaymentResponse() {
         </button>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+        <Loader2 className="h-12 w-12 animate-spin text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-600">Cargando...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function PaymentResponse() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <PaymentResponseContent />
+    </Suspense>
   )
 }

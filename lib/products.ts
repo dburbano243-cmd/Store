@@ -1,5 +1,20 @@
 import { supabase } from "./supabase"
 import type { Product, ProductMedia } from "./types"
+import type { CachedProducts } from "./types/cache.types"
+import type {
+  SupabaseProduct,
+  SupabaseProductMedia,
+  SupabaseProductPrice,
+  SupabaseProductDiscount,
+} from "./types/supabase.types"
+import type {
+  ProductPayload,
+  ProductPricePayload,
+  ProductPriceDiscountPayload,
+} from "./types/product.types"
+
+// Re-export payload types for backward compatibility
+export type { ProductPayload, ProductPricePayload, ProductPriceDiscountPayload }
 
 /* ------------------------------------------------------------------ */
 /*  LocalStorage cache for products (2 horas)                         */
@@ -8,26 +23,21 @@ import type { Product, ProductMedia } from "./types"
 const PRODUCTS_CACHE_KEY = "products_cache"
 const PRODUCTS_CACHE_TTL = 2 * 60 * 60 * 1000 // 2 horas en milisegundos
 
-interface CachedProducts {
-  products: Product[]
-  timestamp: number
-}
-
 function getCachedProducts(): Product[] | null {
   if (typeof window === 'undefined') return null
-  
+
   try {
     const cached = localStorage.getItem(PRODUCTS_CACHE_KEY)
     if (!cached) return null
-    
+
     const parsed: CachedProducts = JSON.parse(cached)
     const now = Date.now()
-    
+
     // Verificar si no ha expirado (2 horas)
     if (now - parsed.timestamp < PRODUCTS_CACHE_TTL) {
       return parsed.products
     }
-    
+
     // Expirado, eliminar
     localStorage.removeItem(PRODUCTS_CACHE_KEY)
     return null
@@ -38,7 +48,7 @@ function getCachedProducts(): Product[] | null {
 
 function setCachedProducts(products: Product[]): void {
   if (typeof window === 'undefined') return
-  
+
   try {
     const cached: CachedProducts = {
       products,
@@ -57,56 +67,6 @@ export function clearProductsCache(): void {
   } catch {
     // Ignorar
   }
-}
-
-/* ------------------------------------------------------------------ */
-/*  Supabase row shape (raw query result)                             */
-/* ------------------------------------------------------------------ */
-
-interface SupabaseProductMedia {
-  id: string
-  storage_path: string
-  url: string | null
-  media_type: string
-  content_type: string | null
-  file_name: string | null
-  file_size: number | null
-  position: number | null
-  alt_text: string | null
-  is_primary: boolean | null
-}
-
-interface SupabaseProductPrice {
-  id: string
-  amount: number
-  is_active: boolean
-  source: string | null
-  effective_at: string | null
-  expires_at: string | null
-}
-
-interface SupabaseProductDiscount {
-  id: string
-  discount_amount: number | null
-  discount_amount_in_cents: number | null
-  discount_percent: number | null
-  is_active: boolean
-}
-
-interface SupabaseProduct {
-  id: string
-  slug: string | null
-  name: string
-  description: string
-  stock: number
-  stock: number
-  stars: number
-  reviews: number
-  created_at: string
-  product_features: { id: string; name: string }[]
-  product_media: SupabaseProductMedia[]
-  product_prices: SupabaseProductPrice[]
-  product_price_discounts: SupabaseProductDiscount[]
 }
 
 /* ------------------------------------------------------------------ */
@@ -140,15 +100,22 @@ function mapMedia(row: SupabaseProductMedia): ProductMedia {
   }
 }
 
-function mapProduct(row: SupabaseProduct): Product {
+function mapProduct(row: SupabaseProduct, limitMedia: boolean = false): Product {
   // Sort media by position (nulls last), then primary first
-  const sortedMedia = [...(row.product_media ?? [])]
+  let sortedMedia = [...(row.product_media ?? [])]
     .sort((a, b) => {
       if (a.is_primary && !b.is_primary) return -1
       if (!a.is_primary && b.is_primary) return 1
       return (a.position ?? 999) - (b.position ?? 999)
     })
     .map(mapMedia)
+
+  // For listing pages, limit to 1 video and 3 images max, video first
+  if (limitMedia) {
+    const videos = sortedMedia.filter(m => m.media_type === 'video').slice(0, 1)
+    const images = sortedMedia.filter(m => m.media_type === 'image').slice(0, 3)
+    sortedMedia = [...videos, ...images]
+  }
 
   // Get COP price from product_prices
   const activePrices = (row.product_prices ?? []).filter((p) => p.is_active)
@@ -219,7 +186,7 @@ export async function fetchProducts(): Promise<Product[]> {
   if (cached && cached.length > 0) {
     return cached
   }
-  
+
   // Si no hay cache, obtener de la base de datos
   try {
     const { data, error } = await supabase
@@ -237,14 +204,38 @@ export async function fetchProducts(): Promise<Product[]> {
       return []
     }
 
-    const products = (data as unknown as SupabaseProduct[]).map(mapProduct)
-    
+    const products = (data as unknown as SupabaseProduct[]).map(row => mapProduct(row, false))
+
     // Guardar en cache
     setCachedProducts(products)
-    
+
     return products
   } catch (err) {
     console.error("Exception fetching products:", err)
+    return []
+  }
+}
+
+/**
+ * Fetch products for listing/catalog pages with limited media
+ * Only returns max 1 video and 2 images per product to save bandwidth
+ */
+export async function fetchProductsForListing(): Promise<Product[]> {
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching products for listing:", error)
+      return []
+    }
+
+    // Map products with limited media (1 video, 2 images max)
+    return (data as unknown as SupabaseProduct[]).map(row => mapProduct(row, true))
+  } catch (err) {
+    console.error("Exception fetching products for listing:", err)
     return []
   }
 }
@@ -303,15 +294,6 @@ export async function fetchProductById(id: string): Promise<Product | null> {
 /*  CRUD helpers used by the admin panel                              */
 /* ------------------------------------------------------------------ */
 
-export interface ProductPayload {
-  name: string
-  slug?: string
-  description: string
-  stock: number
-  stars?: number
-  reviews?: number
-}
-
 export async function createProduct(payload: ProductPayload): Promise<Product | null> {
   const { data, error } = await supabase
     .from("products")
@@ -319,7 +301,6 @@ export async function createProduct(payload: ProductPayload): Promise<Product | 
       name: payload.name,
       slug: payload.slug ?? payload.name.toLowerCase().replace(/\s+/g, "-"),
       description: payload.description,
-      stock: payload.stock,
       stock: payload.stock,
       stars: payload.stars ?? 0,
       reviews: payload.reviews ?? 0,
@@ -384,12 +365,6 @@ export async function deleteProduct(id: string): Promise<boolean> {
 /*  Price helpers                                                    */
 /* ------------------------------------------------------------------ */
 
-export interface ProductPricePayload {
-  product_id: string
-  amount: number
-  is_active?: boolean
-}
-
 export async function createProductPrice(
   payload: Omit<ProductPricePayload, "product_id"> & { product_id: string }
 ): Promise<SupabaseProductPrice | null> {
@@ -411,16 +386,6 @@ export async function createProductPrice(
   }
 
   return data as unknown as SupabaseProductPrice
-}
-
-export interface ProductPriceDiscountPayload {
-  product_id: string
-  discount_amount?: number | null
-  discount_percent?: number | null
-  start_at?: string | null
-  end_at?: string | null
-  metadata?: any
-  is_active?: boolean
 }
 
 export async function createProductDiscount(

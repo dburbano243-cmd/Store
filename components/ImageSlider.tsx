@@ -6,22 +6,18 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 const slides = [
   {
     id: 1,
-    video: "/slider/1.mp4",
+    src: "/slider/1.webp",
+    type: "image" as const,
     title: "Lavable y Reutilizable",
     subtitle: "",
   },
   {
     id: 2,
-    video: "/slider/2.mp4",
+    src: "/slider/2.mp4",
+    type: "video" as const,
     title: "Compacto",
     subtitle: "Pequeño, potente y listo para llevar",
-  },
-  {
-    id: 3,
-    video: "/slider/3.mp4",
-    title: "Calidad que se Nota",
-    subtitle: "Diseñado para durar y rendir al máximo",
-  },
+  }
 ]
 
 export default function ImageSlider() {
@@ -39,7 +35,7 @@ export default function ImageSlider() {
   // Play only the active slide's video; pause/reset others
   useEffect(() => {
     videoRefs.current.forEach((v, i) => {
-      if (!v) return
+      if (!v || slides[i].type !== "video") return
       if (i === currentSlide) {
         // Load and play the current video
         if (v.readyState === 0) {
@@ -73,19 +69,27 @@ export default function ImageSlider() {
           className={`absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
             }`}
         >
-          <video
-            ref={(el) => {
-              if (el) videoRefs.current[index] = el
-            }}
-            className="w-full h-full object-cover"
-            playsInline
-            muted
-            loop
-            preload="none"
-            aria-hidden={index === currentSlide ? "false" : "true"}
-          >
-            <source src={slide.video} type="video/mp4" />
-          </video>
+          {slide.type === "video" ? (
+            <video
+              ref={(el) => {
+                if (el) videoRefs.current[index] = el
+              }}
+              className="w-full h-full object-cover"
+              playsInline
+              muted
+              loop
+              preload="none"
+              aria-hidden={index === currentSlide ? "false" : "true"}
+            >
+              <source src={slide.src} type="video/mp4" />
+            </video>
+          ) : (
+            <img
+              src={slide.src}
+              alt={slide.title}
+              className="w-full h-full object-cover"
+            />
+          )}
 
           <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
             <div className="text-center text-white">

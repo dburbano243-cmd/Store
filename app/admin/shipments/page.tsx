@@ -93,7 +93,6 @@ const statusOptions: { value: ShipmentStatus; label: string }[] = [
   { value: "pending", label: "Pendiente" },
   { value: "preparing", label: "Preparando" },
   { value: "shipped", label: "Enviado" },
-  { value: "in_transit", label: "En transito" },
   { value: "delivered", label: "Entregado" },
   { value: "failed", label: "Fallido" },
 ]

@@ -228,9 +228,10 @@ export default function ProductPage() {
                     src={currentMedia.src || "/placeholder.svg"}
                     alt={product.name}
                     fill
-                    className="object-contain "
-                    sizes="(max-width: 1024px) 100vw, 58vw"
-                    priority
+                    className="object-contain"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 600px"
+                    priority={currentMediaIndex === 0}
+                    quality={75}
                   />
                 ) : currentMedia?.type === "video" ? (
                   <video
@@ -238,6 +239,7 @@ export default function ProductPage() {
                     loop
                     muted
                     playsInline
+                    preload="metadata"
                     className="object-contain w-full h-full"
                   >
                     <source src={currentMedia.src} type="video/mp4" />
@@ -288,9 +290,11 @@ export default function ProductPage() {
                           fill
                           className="object-cover"
                           sizes="80px"
+                          quality={50}
+                          loading="lazy"
                         />
                       ) : (
-                        <video className="object-cover w-full h-full">
+                        <video className="object-cover w-full h-full" preload="none">
                           <source src={media.src} type="video/mp4" />
                         </video>
                       )}

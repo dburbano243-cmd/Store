@@ -6,24 +6,27 @@ import { AspectRatio } from "@/components/ui/aspect-ratio"
 const videos = [
   {
     id: 1,
+    type: "video" as const,
     title: "Diseño y Materiales de Alta Calidad",
     description: "Fabricado con polímero de alta adherencia, resistente al uso continuo y totalmente lavable para máxima durabilidad.",
     thumbnail: "/slider/thumbnail.png",
-    videoUrl: "/slider/1.mp4",
+    src: "/slider/1.webp",
   },
   {
     id: 2,
+    type: "video" as const,
     title: "Modo de Uso Inteligente",
     description: "Deslízalo suavemente sobre la superficie, enjuágalo con agua y reutilízalo. Rápido, práctico y siempre listo en tu bolsillo.",
     thumbnail: "/slider/thumbnail.png",
-    videoUrl: "/slider/2.mp4",
+    src: "/slider/2.mp4",
   },
   {
     id: 3,
+    type: "video" as const,
     title: "Resultados Reales en Segundos",
     description: "Elimina pelusa, polvo y cabello al instante en ropa, muebles y vehículos, dejando un acabado limpio y profesional.",
     thumbnail: "/slider/thumbnail.png",
-    videoUrl: "/slider/3.mp4",
+    src: "/slider/3.webp",
   },
 ]
 
@@ -39,7 +42,7 @@ export default function VideoSection() {
 
     // preload poster images and replace with fallback on error to avoid 404s
     videos.forEach((video, idx) => {
-      const img = new Image()
+      const img = new window.Image()
       img.onload = () => {
         // loaded ok, nothing to do
       }
@@ -54,15 +57,31 @@ export default function VideoSection() {
       img.src = video.thumbnail
     })
 
+    // Use IntersectionObserver to only play videos when visible
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const video = entry.target as HTMLVideoElement
+          const videoIndex = videoRefs.current.indexOf(video)
+          if (videoIndex === -1 || videos[videoIndex].type !== "video") return
+          
+          if (entry.isIntersecting) {
+            video.muted = true
+            video.loop = true
+            video.play().catch(() => { })
+          } else {
+            video.pause()
+          }
+        })
+      },
+      { threshold: 0.5 }
+    )
+
     videoRefs.current.forEach((v) => {
-      if (!v) return
-      try {
-        v.muted = true
-        v.loop = true
-        const p = v.play()
-        if (p && typeof p.then === "function") p.catch(() => { })
-      } catch { }
+      if (v) observer.observe(v)
     })
+
+    return () => observer.disconnect()
   }, [])
 
   return (
@@ -82,18 +101,26 @@ export default function VideoSection() {
           >
             <div className="flex items-center justify-center">
               <AspectRatio ratio={9 / 16}>
-                <video
-                  ref={(el) => {
-                    if (el) videoRefs.current[index] = el
-                  }}
-                  src={video.videoUrl}
-                  poster={posters ? posters[index] : video.thumbnail}
-                  className="w-full h-full object-cover"
-                  playsInline
-                  muted
-                  loop
-                  autoPlay
-                />
+                {video.type === "video" ? (
+                  <video
+                    ref={(el) => {
+                      if (el) videoRefs.current[index] = el
+                    }}
+                    src={video.src}
+                    poster={posters ? posters[index] : video.thumbnail}
+                    className="w-full h-full object-cover"
+                    playsInline
+                    muted
+                    loop
+                    preload="none"
+                  />
+                ) : (
+                  <img
+                    src={video.src}
+                    alt={video.title}
+                    className="w-full h-full object-cover"
+                  />
+                )}
               </AspectRatio>
             </div>
 

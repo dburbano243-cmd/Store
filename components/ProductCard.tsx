@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react"
@@ -17,6 +17,36 @@ export default function ProductCard({ product }: ProductCardProps) {
   const { addToCart, openCart } = useCart()
   const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isVisible, setIsVisible] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  // Intersection Observer to detect visibility
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting)
+      },
+      { threshold: 0.3 }
+    )
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  // Play/pause video based on visibility
+  useEffect(() => {
+    if (videoRef.current) {
+      if (isVisible) {
+        videoRef.current.play().catch(() => {})
+      } else {
+        videoRef.current.pause()
+      }
+    }
+  }, [isVisible, currentIndex])
 
   const mediaFiles = useMemo<MediaFile[]>(() => {
     if (product.media && product.media.length > 0) {
@@ -66,7 +96,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const currentMedia = mediaFiles[currentIndex]
 
   return (
-    <div>
+    <div ref={cardRef}>
       <div
         onClick={handleCardClick}
         className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
@@ -78,15 +108,18 @@ export default function ProductCard({ product }: ProductCardProps) {
               alt={product.name}
               fill
               className="object-cover rounded-lg"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px"
+              quality={70}
+              loading="lazy"
             />
           ) : currentMedia?.type === "video" ? (
             <video
+              ref={videoRef}
               key={currentMedia.src}
-              autoPlay
               loop
               muted
               playsInline
+              preload="none"
               className="w-full h-full object-cover rounded-lg"
             >
               <source src={currentMedia.src} type="video/mp4" />

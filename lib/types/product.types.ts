@@ -1,3 +1,8 @@
+/**
+ * Product-related type definitions
+ * These are the public interfaces used throughout the application
+ */
+
 export interface ProductMedia {
   id: string
   storage_path: string
@@ -64,57 +69,36 @@ export interface MediaFile {
   name: string
 }
 
-// Order & Shipment Types
-export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
-export type PaymentStatus = 'pending' | 'approved' | 'rejected'
-export type ShipmentStatus = 'pending' | 'preparing' | 'shipped' | 'delivered' | 'failed'
-
-export interface ShippingAddress {
-  street: string
-  city: string
+/**
+ * Payload for creating/updating products via API
+ */
+export interface ProductPayload {
+  name: string
+  slug?: string
+  description: string
+  stock: number
+  stars?: number
+  reviews?: number
 }
 
-export interface OrderItem {
-  id: string
+/**
+ * Payload for creating product prices
+ */
+export interface ProductPricePayload {
   product_id: string
-  product_name: string
-  product_image: string
-  quantity: number
-  unit_price: number
-  total_price: number
+  amount: number
+  is_active?: boolean
 }
 
-export interface Order {
-  id: string
-  order_number: string
-  customer_name: string
-  customer_email: string
-  customer_phone: string
-  items: OrderItem[]
-  subtotal: number
-  shipping_cost: number
-  total: number
-  status: OrderStatus
-  payment_status: PaymentStatus
-  payment_method: string
-  payment_reference?: string
-  shipping_address: ShippingAddress
-  created_at: string
-  updated_at: string
-}
-
-export interface Shipment {
-  id: string
-  order_id: string
-  order_number: string
-  tracking_number?: string
-  carrier?: string
-  status: ShipmentStatus
-  estimated_delivery?: string
-  actual_delivery?: string
-  shipping_address: ShippingAddress
-  customer_name: string
-  customer_phone: string
-  created_at: string
-  updated_at: string
+/**
+ * Payload for creating product discounts
+ */
+export interface ProductPriceDiscountPayload {
+  product_id: string
+  discount_amount?: number | null
+  discount_percent?: number | null
+  start_at?: string | null
+  end_at?: string | null
+  metadata?: any
+  is_active?: boolean
 }
