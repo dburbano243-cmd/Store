@@ -42,20 +42,17 @@ export async function DELETE(req: NextRequest) {
     const { error: mediaError } = await supabase.from("product_media").delete().eq("product_id", productId)
     if (mediaError) console.log("[v0] product_media error:", mediaError)
 
-    // 4. Delete discounts
-    console.log("[v0] Deleting product_price_discounts...")
-    const { error: discountsError } = await supabase.from("product_price_discounts").delete().eq("product_id", productId)
-    if (discountsError) console.log("[v0] product_price_discounts error:", discountsError)
-
-    // 5. Delete prices
-    console.log("[v0] Deleting product_prices...")
+    // 4. Delete prices
     const { error: pricesError } = await supabase.from("product_prices").delete().eq("product_id", productId)
-    if (pricesError) console.log("[v0] product_prices error:", pricesError)
+    if (pricesError) console.error("product_prices error:", pricesError)
 
-    // 6. Delete features
-    console.log("[v0] Deleting product_features...")
-    const { error: featuresError } = await supabase.from("product_features").delete().eq("product_id", productId)
-    if (featuresError) console.log("[v0] product_features error:", featuresError)
+    // 5. Delete attributes
+    const { error: attrError } = await supabase.from("product_attributes").delete().eq("product_id", productId)
+    if (attrError) console.error("product_attributes error:", attrError)
+
+    // 6. Delete variants
+    const { error: variantsError } = await supabase.from("product_variants").delete().eq("product_id", productId)
+    if (variantsError) console.error("product_variants error:", variantsError)
 
     // 7. Finally delete the product
     console.log("[v0] Deleting product...")

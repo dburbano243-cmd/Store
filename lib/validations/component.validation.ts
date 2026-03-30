@@ -125,6 +125,99 @@ export const componentContentSchemas: Record<string, z.ZodSchema> = {
     alignment: z.enum(['left', 'center', 'right']).optional(),
     titleSize: z.enum(['sm', 'md', 'lg', 'xl']).optional(),
   }),
+  
+  product_grid: z.object({
+    title: safeTextSchema.optional(),
+    subtitle: safeTextSchema.optional(),
+    dataSource: z.enum(['featured', 'recent', 'category', 'manual']).optional(),
+    categoryId: z.string().optional(),
+    limit: z.number().min(1).max(50).optional(),
+    columns: z.string().optional(),
+    showViewAll: z.boolean().optional(),
+    viewAllUrl: z.string().optional(),
+    manualProductIds: z.array(z.string()).optional(),
+  }),
+  
+  video_gallery: z.object({
+    title: safeTextSchema.optional(),
+    subtitle: safeTextSchema.optional(),
+    layout: z.enum(['grid', 'list', 'featured']).optional(),
+    columns: z.string().optional(),
+    videos: z.array(z.object({
+      id: z.string(),
+      title: safeTextSchema.optional(),
+      description: safeTextSchema.optional(),
+      youtubeUrl: z.string().optional(),
+      thumbnailUrl: z.string().optional(),
+    })).optional(),
+  }),
+  
+  image_text_left: z.object({
+    title: safeTextSchema.optional(),
+    subtitle: safeTextSchema.optional(),
+    text: safeTextSchema.optional(),
+    image: z.string().optional(),
+    imageAlt: safeTextSchema.optional(),
+    showButton: z.boolean().optional(),
+    buttonText: safeTextSchema.optional(),
+    buttonUrl: z.string().optional(),
+  }),
+  
+  image_text_right: z.object({
+    title: safeTextSchema.optional(),
+    subtitle: safeTextSchema.optional(),
+    text: safeTextSchema.optional(),
+    image: z.string().optional(),
+    imageAlt: safeTextSchema.optional(),
+    showButton: z.boolean().optional(),
+    buttonText: safeTextSchema.optional(),
+    buttonUrl: z.string().optional(),
+  }),
+  
+  hero_banner_left: z.object({
+    title: safeTextSchema.optional(),
+    subtitle: safeTextSchema.optional(),
+    text: safeTextSchema.optional(),
+    backgroundImage: z.string().optional(),
+    overlayOpacity: z.number().min(0).max(100).optional(),
+    showButton: z.boolean().optional(),
+    buttonText: safeTextSchema.optional(),
+    buttonUrl: z.string().optional(),
+    showSecondaryButton: z.boolean().optional(),
+    secondaryButtonText: safeTextSchema.optional(),
+    secondaryButtonUrl: z.string().optional(),
+  }),
+  
+  hero_banner_right: z.object({
+    title: safeTextSchema.optional(),
+    subtitle: safeTextSchema.optional(),
+    text: safeTextSchema.optional(),
+    backgroundImage: z.string().optional(),
+    overlayOpacity: z.number().min(0).max(100).optional(),
+    showButton: z.boolean().optional(),
+    buttonText: safeTextSchema.optional(),
+    buttonUrl: z.string().optional(),
+    showSecondaryButton: z.boolean().optional(),
+    secondaryButtonText: safeTextSchema.optional(),
+    secondaryButtonUrl: z.string().optional(),
+  }),
+  
+  header_eteris: z.object({
+    slides: z.array(z.object({
+      id: z.string(),
+      title: safeTextSchema.optional(),
+      text: safeTextSchema.optional(),
+      image: z.string().optional(),
+      buttonText: safeTextSchema.optional(),
+      buttonUrl: z.string().optional(),
+    })).optional(),
+    autoplay: z.boolean().optional(),
+    autoplaySpeed: z.number().min(1000).max(30000).optional(),
+    showSocials: z.boolean().optional(),
+    instagramUrl: z.string().optional(),
+    twitterUrl: z.string().optional(),
+    facebookUrl: z.string().optional(),
+  }),
 }
 
 /**

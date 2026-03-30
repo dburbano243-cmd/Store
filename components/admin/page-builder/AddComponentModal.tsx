@@ -190,9 +190,9 @@ export function AddComponentModal({ onComponentCreated }: AddComponentModalProps
               disabled={isCreating || success}
             />
             {formData.name && (
-              <p className="text-xs text-muted-foreground flex items-center gap-2">
-                Nombre técnico: <Badge variant="outline" className="font-mono">{formData.name}</Badge>
-              </p>
+              <span className="text-xs text-muted-foreground flex items-center gap-2">
+                Nombre técnico: <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold font-mono">{formData.name}</span>
+              </span>
             )}
           </div>
           

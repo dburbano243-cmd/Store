@@ -82,9 +82,10 @@ const defaultComponentTypes: Array<{
 
 interface ComponentToolbarProps {
   pageId: string
+  onComponentAdded?: (component: import("@/lib/types/page-builder.types").PageComponent) => void
 }
 
-export function ComponentToolbar({ pageId }: ComponentToolbarProps) {
+export function ComponentToolbar({ pageId, onComponentAdded }: ComponentToolbarProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [isAdding, setIsAdding] = useState<string | null>(null)
 
@@ -126,7 +127,7 @@ export function ComponentToolbar({ pageId }: ComponentToolbarProps) {
     setIsAdding(componentType)
     try {
       // Crear componente con sort_order alto para que quede al final
-      await createComponent({
+      const newComponent = await createComponent({
         page_id: pageId,
         component_type: componentType,
         draft_content: {},
@@ -135,8 +136,8 @@ export function ComponentToolbar({ pageId }: ComponentToolbarProps) {
         is_active: true,
         is_global: false,
       })
-      // Recargar la página para mostrar el nuevo componente
-      window.location.reload()
+      // Notificar al editor para que actualice el estado
+      onComponentAdded?.(newComponent)
     } catch (error) {
       console.error("Error adding component:", error)
     } finally {

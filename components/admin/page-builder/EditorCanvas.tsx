@@ -19,6 +19,7 @@ interface EditorCanvasProps {
   onSelectComponent: (id: string | null) => void
   onContentChange: (id: string, content: Record<string, unknown>) => void
   onStylesChange: (id: string, styles: ComponentStyles) => void
+  onDeleteComponent: (id: string) => void
 }
 
 export function EditorCanvas({
@@ -28,6 +29,7 @@ export function EditorCanvas({
   onSelectComponent,
   onContentChange,
   onStylesChange,
+  onDeleteComponent,
 }: EditorCanvasProps) {
   // Render global header components first
   const headerComponents = globalComponents.filter(
@@ -69,6 +71,7 @@ export function EditorCanvas({
             onSelect={() => onSelectComponent(component.id)}
             onContentChange={(content) => onContentChange(component.id, content)}
             onStylesChange={(styles) => onStylesChange(component.id, styles)}
+            onDelete={() => onDeleteComponent(component.id)}
           />
         ))}
       </div>
@@ -99,6 +102,7 @@ interface SortableComponentProps {
   onSelect: () => void
   onContentChange: (content: Record<string, unknown>) => void
   onStylesChange: (styles: ComponentStyles) => void
+  onDelete: () => void
 }
 
 function SortableComponent({
@@ -107,6 +111,7 @@ function SortableComponent({
   onSelect,
   onContentChange,
   onStylesChange,
+  onDelete,
 }: SortableComponentProps) {
   const {
     attributes,
@@ -158,6 +163,19 @@ function SortableComponent({
         <span className="px-2 text-xs font-medium text-muted-foreground">
           {component.component_type}
         </span>
+
+        {/* Delete Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
       </div>
 
       {/* Component Content */}

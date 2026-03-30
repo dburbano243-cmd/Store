@@ -30,7 +30,7 @@ const defaultContent: HeroSliderContent = {
       id: "slide-1",
       title: "Bienvenido a nuestra tienda",
       subtitle: "Descubre los mejores productos con ofertas exclusivas",
-      image: "/placeholder.svg?height=600&width=1200",
+      image: "/images/placeholder.svg",
       buttonText: "Ver productos",
       buttonUrl: "/productos",
     },
@@ -38,7 +38,7 @@ const defaultContent: HeroSliderContent = {
       id: "slide-2",
       title: "Nueva colección",
       subtitle: "Explora las últimas tendencias de la temporada",
-      image: "/placeholder.svg?height=600&width=1200",
+      image: "/images/placeholder.svg",
       buttonText: "Explorar",
       buttonUrl: "/coleccion",
     },
@@ -63,7 +63,7 @@ export function HeroSlider({
     autoplaySpeed = defaultContent.autoplaySpeed,
     showArrows = defaultContent.showArrows,
     showDots = defaultContent.showDots,
-  } = content as HeroSliderContent
+  } = content as unknown as HeroSliderContent
 
   const [currentSlide, setCurrentSlide] = useState(0)
 
@@ -140,14 +140,18 @@ export function HeroSlider({
             />
             
             {/* Overlay */}
-            <div className="absolute inset-0 bg-black/40" />
+            <div 
+              className="absolute inset-0" 
+              style={{ backgroundColor: styles?.overlayColor || "#000000", opacity: 0.4 } as React.CSSProperties}
+            />
             
             {/* Content */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-4">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
               {isEditable ? (
                 <>
                   <h1
                     className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 max-w-4xl outline-none focus:ring-2 focus:ring-white/50 rounded px-2"
+                    style={{ color: styles?.textColor || "#ffffff" }}
                     contentEditable
                     suppressContentEditableWarning
                     onBlur={(e) =>
@@ -158,6 +162,7 @@ export function HeroSlider({
                   </h1>
                   <p
                     className="text-lg md:text-xl lg:text-2xl mb-8 max-w-2xl outline-none focus:ring-2 focus:ring-white/50 rounded px-2"
+                    style={{ color: styles?.textColor ? `${styles.textColor}e6` : "rgba(255,255,255,0.9)" }}
                     contentEditable
                     suppressContentEditableWarning
                     onBlur={(e) =>
@@ -169,10 +174,16 @@ export function HeroSlider({
                 </>
               ) : (
                 <>
-                  <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 max-w-4xl">
+                  <h1 
+                    className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 max-w-4xl"
+                    style={{ color: styles?.textColor || "#ffffff" }}
+                  >
                     {slide.title}
                   </h1>
-                  <p className="text-lg md:text-xl lg:text-2xl mb-8 max-w-2xl">
+                  <p 
+                    className="text-lg md:text-xl lg:text-2xl mb-8 max-w-2xl"
+                    style={{ color: styles?.textColor ? `${styles.textColor}e6` : "rgba(255,255,255,0.9)" }}
+                  >
                     {slide.subtitle}
                   </p>
                 </>
@@ -181,8 +192,11 @@ export function HeroSlider({
               {slide.buttonText && (
                 <Button
                   size="lg"
-                  variant="secondary"
                   className="text-lg px-8"
+                  style={{ 
+                    backgroundColor: styles?.accentColor || "#ffffff", 
+                    color: styles?.accentColor ? "#ffffff" : "#000000" 
+                  } as React.CSSProperties}
                   onClick={(e) => {
                     if (isEditable) {
                       e.preventDefault()

@@ -1,20 +1,19 @@
 import { supabase } from "./supabase"
-import type { Product, ProductMedia } from "./types"
+import type { ProductMedia } from "./types"
+import type { Product } from "./types/product.types"
 import type { CachedProducts } from "./types/cache.types"
 import type {
   SupabaseProduct,
   SupabaseProductMedia,
   SupabaseProductPrice,
-  SupabaseProductDiscount,
 } from "./types/supabase.types"
 import type {
   ProductPayload,
   ProductPricePayload,
-  ProductPriceDiscountPayload,
 } from "./types/product.types"
 
 // Re-export payload types for backward compatibility
-export type { ProductPayload, ProductPricePayload, ProductPriceDiscountPayload }
+export type { ProductPayload, ProductPricePayload }
 
 /* ------------------------------------------------------------------ */
 /*  LocalStorage cache for products (2 horas)                         */
@@ -35,7 +34,7 @@ function getCachedProducts(): Product[] | null {
 
     // Verificar si no ha expirado (2 horas)
     if (now - parsed.timestamp < PRODUCTS_CACHE_TTL) {
-      return parsed.products
+      return parsed.products as Product[]
     }
 
     // Expirado, eliminar
@@ -100,6 +99,16 @@ function mapMedia(row: SupabaseProductMedia): ProductMedia {
   }
 }
 
+function mapAttribute(row: any): any {
+  return {
+    id: row.id,
+    product_id: row.product_id,
+    attribute_type_id: row.attribute_type_id,
+    values: row.values,
+    created_at: row.created_at,
+  }
+}
+
 function mapProduct(row: SupabaseProduct, limitMedia: boolean = false): Product {
   // Sort media by position (nulls last), then primary first
   let sortedMedia = [...(row.product_media ?? [])]
@@ -121,46 +130,25 @@ function mapProduct(row: SupabaseProduct, limitMedia: boolean = false): Product 
   const activePrices = (row.product_prices ?? []).filter((p) => p.is_active)
   const copPrice = activePrices.length > 0 ? activePrices[0].amount : 0
 
-  // Calculate price without discount from active discounts
-  const activeDiscounts = (row.product_price_discounts ?? []).filter((d) => d.is_active)
-  let priceWithDiscount = copPrice
-  if (activeDiscounts.length > 0) {
-    const discount = activeDiscounts[0]
-    const discountAmt = discount.discount_amount ?? discount.discount_amount_in_cents
-    if (discountAmt) {
-      priceWithDiscount = copPrice - discountAmt
-    } else if (discount.discount_percent) {
-      priceWithDiscount = Math.round(copPrice / (1 - discount.discount_percent / 100))
-    }
-  }
-
-  // Normalize discounts so UI can use them (support both discount_amount or discount_amount_in_cents)
-  const discounts = (row.product_price_discounts ?? []).map((d) => {
-    const anyd = d as any
-    const discount_amount = anyd.discount_amount ?? anyd.discount_amount_in_cents ?? undefined
-    return {
-      id: d.id,
-      discount_amount: discount_amount,
-      discount_percent: d.discount_percent ?? undefined,
-      metadata: anyd.metadata,
-      is_active: d.is_active,
-    }
-  })
-
   return {
     id: row.id,
     slug: row.slug ?? undefined,
     name: row.name,
     description: row.description,
+    short_description: row.short_description ?? undefined,
+    sku: row.sku ?? undefined,
+    weight: row.weight ?? undefined,
+    dimensions: row.dimensions ?? undefined,
+    is_active: row.is_active ?? true,
+    is_featured: row.is_featured ?? false,
+    category_id: row.category_id ?? undefined,
     price: copPrice,
-    priceWithDiscount,
     priceCOP: copPrice,
     stock: row.stock ?? 0,
     stars: row.stars ?? 0,
     reviews: row.reviews ?? 0,
-    features: row.product_features?.map((f) => f.name) ?? [],
     media: sortedMedia,
-    discounts,
+    attributes: (row.product_attributes ?? []).map(mapAttribute),
   }
 }
 
@@ -170,10 +158,9 @@ function mapProduct(row: SupabaseProduct, limitMedia: boolean = false): Product 
 
 const PRODUCT_SELECT = `
   *,
-  product_features ( id, name ),
+  product_attributes ( id, product_id, attribute_type_id, values, created_at ),
   product_media ( id, storage_path, url, media_type, content_type, file_name, file_size, position, alt_text, is_primary ),
-  product_prices ( id, amount, is_active),
-  product_price_discounts ( id, discount_amount, discount_percent, start_at, end_at, is_active, metadata)
+  product_prices ( id, amount, is_active)
 `
 
 /* ------------------------------------------------------------------ */
@@ -347,9 +334,11 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
-  // Remove media and feature associations first (FK constraints)
+  // Remove related records first (FK constraints)
   await supabase.from("product_media").delete().eq("product_id", id)
-  await supabase.from("product_features").delete().eq("product_id", id)
+  await supabase.from("product_attributes").delete().eq("product_id", id)
+  await supabase.from("product_variants").delete().eq("product_id", id)
+  await supabase.from("product_prices").delete().eq("product_id", id)
 
   const { error } = await supabase.from("products").delete().eq("id", id)
 
@@ -388,85 +377,4 @@ export async function createProductPrice(
   return data as unknown as SupabaseProductPrice
 }
 
-export async function createProductDiscount(
-  payload: ProductPriceDiscountPayload
-): Promise<SupabaseProductDiscount | null> {
-  const insertRow: Record<string, unknown> = {
-    product_id: payload.product_id,
-    discount_amount: payload.discount_amount ?? null,
-    discount_percent: payload.discount_percent ?? null,
-    start_at: payload.start_at || new Date().toISOString(),
-    end_at: payload.end_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    metadata: payload.metadata ?? null,
-    is_active: payload.is_active ?? true,
-  }
 
-  const { data, error } = await supabase
-    .from("product_price_discounts")
-    .insert([insertRow])
-    .select()
-    .single()
-
-  if (error) {
-    console.error("Error creating product price discount:", error)
-    return null
-  }
-
-  return data as unknown as SupabaseProductDiscount
-}
-
-export async function updateProductDiscount(
-  id: string,
-  payload: Partial<ProductPriceDiscountPayload>
-): Promise<SupabaseProductDiscount | null> {
-  const updateData: Record<string, unknown> = {}
-
-  if (payload.discount_amount !== undefined) updateData.discount_amount = payload.discount_amount
-  if (payload.discount_percent !== undefined) updateData.discount_percent = payload.discount_percent
-  if (payload.start_at !== undefined) updateData.start_at = payload.start_at
-  if (payload.end_at !== undefined) updateData.end_at = payload.end_at
-  if (payload.metadata !== undefined) updateData.metadata = payload.metadata
-  if (payload.is_active !== undefined) updateData.is_active = payload.is_active
-
-  const { data, error } = await supabase
-    .from("product_price_discounts")
-    .update(updateData)
-    .eq("id", id)
-    .select()
-    .single()
-
-  if (error) {
-    console.error("Error updating product price discount:", error)
-    return null
-  }
-
-  return data as unknown as SupabaseProductDiscount
-}
-
-export async function deleteProductDiscount(id: string): Promise<boolean> {
-  const { error } = await supabase
-    .from("product_price_discounts")
-    .delete()
-    .eq("id", id)
-
-  if (error) {
-    console.error("Error deleting product price discount:", error)
-    return false
-  }
-
-  return true
-}
-
-export async function deleteAllProductDiscounts(productId: string): Promise<boolean> {
-  const { error } = await supabase
-    .from("product_price_discounts")
-    .delete()
-    .eq("product_id", productId)
-
-  if (error) {
-    console.error("Error deleting all product discounts:", error)
-    return false
-  }
-
-  return true
-}

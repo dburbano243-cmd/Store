@@ -1,7 +1,7 @@
 "use client"
 
-import React from "react"
-import { useRouter } from "next/navigation"
+import React, { useEffect, useState } from "react"
+import { useRouter, usePathname } from "next/navigation"
 import AdminSidebar from "@/components/AdminSidebar"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
@@ -11,9 +11,32 @@ import { Loader2 } from "lucide-react"
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
+  
+  // Check if we're on the page builder route
+  const isPageBuilder = pathname?.startsWith("/admin/pages/") && pathname !== "/admin/pages"
+  
+  // Sidebar state - default collapsed when in page builder
+  const [sidebarOpen, setSidebarOpen] = useState(!isPageBuilder)
+  
+  // Auto-collapse sidebar when entering page builder
+  useEffect(() => {
+    if (isPageBuilder) {
+      setSidebarOpen(false)
+    } else {
+      setSidebarOpen(true)
+    }
+  }, [isPageBuilder])
 
-  // Mostrar loading mientras se verifica la autenticacion
-  if (loading) {
+  // Redirigir si no hay usuario o no es admin
+  useEffect(() => {
+    if (!loading && (!user || !isAdmin)) {
+      router.push("/login")
+    }
+  }, [loading, user, isAdmin, router])
+
+  // Mostrar loading mientras se verifica la autenticacion o se redirige
+  if (loading || !user || !isAdmin) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -21,14 +44,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
-  // Si no hay usuario o no es admin, redirigir al home inmediatamente
-  if (!user || !isAdmin) {
-    router.push("/")
-    return null
-  }
-
   return (
-    <SidebarProvider>
+    <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <AdminSidebar />
       <SidebarInset>
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">

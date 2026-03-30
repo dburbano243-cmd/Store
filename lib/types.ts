@@ -15,18 +15,14 @@ export interface ProductPrice {
   id: string
   amount: number
   is_active: boolean
-  source: string | null
-  effective_at: string | null
-  expires_at: string | null
 }
 
-export interface ProductDiscount {
+export interface ProductAttribute {
   id: string
-  discount_amount_in_cents: number | null
-  discount_percent: number | null
-  start_at: string | null
-  end_at: string | null
-  is_active: boolean
+  product_id?: string
+  attribute_type_id: string
+  values: string[] | { value: string; hex?: string }[]
+  created_at?: string
 }
 
 export interface Product {
@@ -34,24 +30,20 @@ export interface Product {
   slug?: string
   name: string
   description: string
-  /** Active COP price (from product_prices) */
+  short_description?: string
+  sku?: string
+  weight?: number
+  dimensions?: { largo?: number; ancho?: number; alto?: number }
+  is_active: boolean
+  is_featured: boolean
+  category_id?: string
   price: number
-  /** Original price before discount (from product_price_discounts or product_prices) */
-  priceWithDiscount: number
-  /** Price in COP */
   priceCOP: number
   stock: number
   stars: number
   reviews: number
-  features: string[]
   media: ProductMedia[]
-  discounts?: Array<{
-    id: string
-    discount_amount?: number
-    discount_percent?: number
-    metadata?: any
-    is_active: boolean
-  }>
+  attributes?: ProductAttribute[]
 }
 
 export interface CartItem extends Product {

@@ -11,6 +11,6 @@ export { TitleText } from "./TitleText"
 // Types
 export type { HeroSlide, HeroSliderContent } from "./HeroSlider"
 export type { CarouselCard, CarouselCardsContent } from "./CarouselCards"
-export type { ContactInfo, ContactSectionContent } from "./ContactSection"
+export type { ContactSectionContent } from "./ContactSection"
 export type { ImageTextContent } from "./ImageText"
 export type { TitleTextContent } from "./TitleText"

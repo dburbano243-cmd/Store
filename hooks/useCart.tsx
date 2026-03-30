@@ -5,7 +5,7 @@ import type { Product, CartItem } from "@/lib/types"
 
 interface CartContextType {
   cartItems: CartItem[]
-  addToCart: (product: Product, quantity?: number, price?: number, selectedMediaIndex?: number) => void
+  addToCart: (product: Product, quantity?: number) => void
   removeFromCart: (productId: string) => void
   updateQuantity: (productId: string, quantity: number) => void
   getTotalItems: () => number
@@ -24,7 +24,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
 
-  // Cargar carrito desde localStorage al inicializar
   useEffect(() => {
     const savedCart = localStorage.getItem("cart")
     if (savedCart) {
@@ -37,34 +36,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setIsHydrated(true)
   }, [])
 
-  // Guardar carrito en localStorage cuando cambie
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cartItems))
   }, [cartItems])
 
-  const addToCart = (product: Product, quantity?: number, price?: number, selectedMediaIndex?: number) => {
+  const addToCart = (product: Product, quantity?: number) => {
     const qty = Number(quantity) || 1
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id)
-      // Use priceWithDiscount (which already has the discount for 1 unit applied) when no explicit price is passed
-      const itemPrice = price !== undefined ? price : product.priceWithDiscount
 
       if (existingItem) {
-        const newQty = Number(existingItem.quantity) + qty
-        // Recalculate unit price based on discounts and metadata
-        const basePrice = (existingItem as any).base_price ?? (existingItem as any).price ?? product.price
-        const newUnitPrice = computeUnitPriceFromProduct(existingItem as any, basePrice, newQty)
         return prevItems.map((item) =>
           item.id === product.id
-            ? { ...item, quantity: newQty, price: newUnitPrice }
-            : item,
+            ? { ...item, quantity: Number(item.quantity) + qty }
+            : item
         )
       } else {
-        return [
-          ...prevItems,
-          // Store base_price so we can always recompute discounts from the original product price
-          { ...(product as any), quantity: qty, price: itemPrice, base_price: product.price, selected_media_index: selectedMediaIndex ?? 0 },
-        ]
+        return [...prevItems, { ...product, quantity: qty }]
       }
     })
   }
@@ -81,12 +69,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     setCartItems((prevItems) =>
-      prevItems.map((item) => {
-        if (item.id !== productId) return item
-        const basePrice = (item as any).base_price ?? (item as any).price ?? 0
-        const newUnitPrice = computeUnitPriceFromProduct(item as any, basePrice, qty)
-        return { ...item, quantity: qty, price: newUnitPrice }
-      }),
+      prevItems.map((item) =>
+        item.id === productId ? { ...item, quantity: qty } : item
+      )
     )
   }
 
@@ -100,30 +85,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     setCartItems([])
-  }
-
-  // Helper: given a product-like object, its base unit price and a desired quantity,
-  // compute the per-unit price applying discounts from `discounts` metadata.
-  // All prices are in COP.
-  function computeUnitPriceFromProduct(prod: any, basePrice: number, q: number) {
-    const discounts = prod.discounts ?? []
-    const candidates: number[] = []
-    for (const d of discounts) {
-      if (!d || !d.is_active) continue
-      const units = d.metadata?.units ? Number(d.metadata.units) : null
-      const amount = Number(d.discount_amount ?? 0)
-      if (!units || !amount) continue
-      if (units === q) {
-        candidates.push(amount * q)
-      } else if (units === 3 && q >= 3) {
-        candidates.push(amount * q)
-      }
-    }
-    const discountTotal = candidates.length > 0 ? Math.max(...candidates) : 0
-    const originalTotal = basePrice * q
-    const finalTotal = Math.max(0, originalTotal - discountTotal)
-    const perUnit = finalTotal / q
-    return perUnit
   }
 
   const openCart = () => setIsCartOpen(true)

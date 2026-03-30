@@ -42,6 +42,7 @@ import {
   updateComponentsOrder,
   updatePage,
   publishPageComponents,
+  deleteComponent,
 } from "@/lib/services/page-builder.service"
 import type {
   PageWithComponents,
@@ -117,25 +118,61 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
     setHasUnsavedChanges(true)
   }, [])
 
+  const handleDeleteComponent = useCallback(async (id: string) => {
+    try {
+      await deleteComponent(id)
+      setComponents((prev) => prev.filter((c) => c.id !== id))
+      if (selectedComponentId === id) {
+        setSelectedComponentId(null)
+      }
+      toast({
+        title: "Componente eliminado",
+        description: "El componente se ha eliminado correctamente.",
+      })
+      onSave?.()
+    } catch (error) {
+      console.error("Error deleting component:", error)
+      toast({
+        title: "Error al eliminar",
+        description: "No se pudo eliminar el componente.",
+        variant: "destructive",
+      })
+    }
+  }, [selectedComponentId, toast, onSave])
+
+  const handleComponentAdded = useCallback((newComponent: PageComponent) => {
+    setComponents((prev) => [...prev, newComponent])
+    setHasUnsavedChanges(true)
+    toast({
+      title: "Componente agregado",
+      description: "El componente se ha agregado correctamente.",
+    })
+  }, [toast])
+
+  // Internal save function that throws errors (for use in publish)
+  const saveDraftInternal = async () => {
+    // Save all component changes
+    const updates = components.map((comp) =>
+      updateComponent(comp.id, {
+        draft_content: comp.draft_content,
+        styles: comp.styles,
+        sort_order: comp.sort_order,
+      })
+    )
+    await Promise.all(updates)
+
+    // Update component order
+    await updateComponentsOrder(
+      components.map((c, index) => ({ id: c.id, sort_order: index }))
+    )
+
+    setHasUnsavedChanges(false)
+  }
+
   const handleSaveDraft = async () => {
     setIsSaving(true)
     try {
-      // Save all component changes
-      const updates = components.map((comp) =>
-        updateComponent(comp.id, {
-          draft_content: comp.draft_content,
-          styles: comp.styles,
-          sort_order: comp.sort_order,
-        })
-      )
-      await Promise.all(updates)
-
-      // Update component order
-      await updateComponentsOrder(
-        components.map((c, index) => ({ id: c.id, sort_order: index }))
-      )
-
-      setHasUnsavedChanges(false)
+      await saveDraftInternal()
       toast({
         title: "Borrador guardado",
         description: "Los cambios se han guardado correctamente.",
@@ -156,8 +193,8 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
   const handlePublish = async () => {
     setIsPublishing(true)
     try {
-      // First save the draft
-      await handleSaveDraft()
+      // First save the draft (without showing toast)
+      await saveDraftInternal()
 
       // Then publish (copy draft_content to published_content)
       await publishPageComponents(page.id)
@@ -257,19 +294,19 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
       {/* Editor Body */}
       <div className="flex flex-1 overflow-hidden">
         {/* Component Toolbar */}
-        <ComponentToolbar pageId={page.id} />
+        <ComponentToolbar pageId={page.id} onComponentAdded={handleComponentAdded} />
 
-        {/* Canvas */}
-        <div className="flex-1 overflow-auto bg-muted/30 p-8">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={components.map((c) => c.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <SortableContext
-              items={components.map((c) => c.id)}
-              strategy={verticalListSortingStrategy}
-            >
+            {/* Canvas */}
+            <div className="flex-1 overflow-auto bg-muted/30 p-8">
               <EditorCanvas
                 components={components}
                 globalComponents={globalComponents}
@@ -277,34 +314,33 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
                 onSelectComponent={handleSelectComponent}
                 onContentChange={handleContentChange}
                 onStylesChange={handleStylesChange}
+                onDeleteComponent={handleDeleteComponent}
               />
-            </SortableContext>
-          </DndContext>
 
-          {/* Empty State */}
-          {components.length === 0 && (
-            <div className="flex h-64 flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25">
-              <Plus className="h-10 w-10 text-muted-foreground/50" />
-              <p className="mt-4 text-sm text-muted-foreground">
-                Arrastra componentes desde la barra lateral izquierda
-              </p>
+              {/* Empty State */}
+              {components.length === 0 && (
+                <div className="flex h-64 flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25">
+                  <Plus className="h-10 w-10 text-muted-foreground/50" />
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Arrastra componentes desde la barra lateral izquierda
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Properties Sidebar */}
-        {isSidebarOpen && (
-          <EditorSidebar
-            selectedComponent={selectedComponent}
-            onContentChange={(content) =>
-              selectedComponent && handleContentChange(selectedComponent.id, content)
-            }
-            onStylesChange={(styles) =>
-              selectedComponent && handleStylesChange(selectedComponent.id, styles)
-            }
-            onClose={() => setSelectedComponentId(null)}
-          />
-        )}
+            {/* Properties Sidebar */}
+            {isSidebarOpen && (
+              <EditorSidebar
+                components={components}
+                selectedComponentId={selectedComponentId}
+                onSelectComponent={handleSelectComponent}
+                onContentChange={handleContentChange}
+                onStylesChange={handleStylesChange}
+                onDeleteComponent={handleDeleteComponent}
+              />
+            )}
+          </SortableContext>
+        </DndContext>
       </div>
     </div>
   )

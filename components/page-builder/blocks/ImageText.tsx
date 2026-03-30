@@ -19,7 +19,7 @@ export interface ImageTextContent {
 const defaultContent: ImageTextContent = {
   title: "Sobre Nosotros",
   text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-  image: "/placeholder.svg?height=400&width=600",
+  image: "/images/placeholder.svg",
   imageAlt: "Imagen descriptiva",
   imagePosition: "left",
   buttonText: "Saber más",
@@ -44,7 +44,7 @@ export function ImageText({
     buttonText = defaultContent.buttonText,
     buttonUrl = defaultContent.buttonUrl,
     showButton = defaultContent.showButton,
-  } = content as ImageTextContent
+  } = content as unknown as ImageTextContent
 
   const handleTextChange = (field: string, value: string) => {
     if (onContentChange) {
@@ -69,6 +69,7 @@ export function ImageText({
         <>
           <h2
             className="text-2xl md:text-3xl lg:text-4xl font-bold outline-none focus:ring-2 focus:ring-primary rounded px-2"
+            style={{ color: styles?.textColor }}
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => handleTextChange("title", e.currentTarget.textContent || "")}
@@ -76,7 +77,8 @@ export function ImageText({
             {title}
           </h2>
           <div
-            className="text-muted-foreground leading-relaxed whitespace-pre-line outline-none focus:ring-2 focus:ring-primary rounded px-2"
+            className="leading-relaxed whitespace-pre-line outline-none focus:ring-2 focus:ring-primary rounded px-2"
+            style={{ color: styles?.textColor ? `${styles.textColor}99` : undefined, opacity: styles?.textColor ? 1 : 0.7 }}
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => handleTextChange("text", e.currentTarget.textContent || "")}
@@ -86,10 +88,16 @@ export function ImageText({
         </>
       ) : (
         <>
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold">
+          <h2 
+            className="text-2xl md:text-3xl lg:text-4xl font-bold"
+            style={{ color: styles?.textColor }}
+          >
             {title}
           </h2>
-          <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
+          <div 
+            className="leading-relaxed whitespace-pre-line"
+            style={{ color: styles?.textColor ? `${styles.textColor}99` : undefined, opacity: styles?.textColor ? 1 : 0.7 }}
+          >
             {text}
           </div>
         </>
@@ -99,6 +107,7 @@ export function ImageText({
         <div className="pt-4">
           <Button
             size="lg"
+            style={{ backgroundColor: styles?.accentColor } as React.CSSProperties}
             onClick={(e) => {
               if (isEditable) {
                 e.preventDefault()

@@ -14,6 +14,7 @@ import {
   FileText,
   Layers,
   PanelLeft,
+  Plug,
 } from "lucide-react"
 
 import {
@@ -61,6 +62,11 @@ const pageBuilderNav = {
       href: "/admin/components",
       icon: Layers,
     },
+    {
+      label: "Integraciones",
+      href: "/admin/integrations",
+      icon: Plug,
+    },
   ],
 }
 
@@ -90,7 +96,7 @@ const storeNav = {
 export default function AdminSidebar() {
   const pathname = usePathname()
 
-  const isActiveRoute = (href: string) => 
+  const isActiveRoute = (href: string) =>
     pathname === href || pathname.startsWith(href + "/")
 
   const isGroupActive = (items: { href: string }[]) =>

@@ -3,10 +3,11 @@
 import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { Plus, Pencil, Trash2, Globe, FileText, Loader2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Globe, FileText, Loader2, Settings, Navigation, PanelBottom } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
   TableBody,
@@ -40,6 +41,9 @@ import { Badge } from "@/components/ui/badge"
 
 import { getPages, createPage, deletePage } from "@/lib/services/page-builder.service"
 import type { Page, PageStatus } from "@/lib/types/page-builder.types"
+import { GlobalSettingsPanel } from "@/components/admin/page-builder/GlobalSettingsPanel"
+import { NavbarEditor } from "@/components/admin/page-builder/NavbarEditor"
+import { FooterEditor } from "@/components/admin/page-builder/FooterEditor"
 
 const statusConfig: Record<PageStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   draft: { label: "Borrador", variant: "secondary" },
@@ -127,22 +131,34 @@ export default function PagesAdminPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Páginas</h1>
-          <p className="text-muted-foreground">
-            Administra las páginas de tu sitio web
-          </p>
-        </div>
-        
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nueva Página
-            </Button>
-          </DialogTrigger>
+      <Tabs defaultValue="pages" className="space-y-6">
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="pages" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Páginas
+            </TabsTrigger>
+            <TabsTrigger value="navbar" className="flex items-center gap-2">
+              <Navigation className="h-4 w-4" />
+              Navegación
+            </TabsTrigger>
+            <TabsTrigger value="footer" className="flex items-center gap-2">
+              <PanelBottom className="h-4 w-4" />
+              Footer
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Estilos Globales
+            </TabsTrigger>
+          </TabsList>
+          
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva Página
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Crear Nueva Página</DialogTitle>
@@ -190,11 +206,13 @@ export default function PagesAdminPage() {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-      </div>
+          </Dialog>
+        </div>
 
-      {/* Pages Table */}
-      <Card>
+        {/* Pages Tab */}
+        <TabsContent value="pages" className="space-y-6">
+          {/* Pages Table */}
+          <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -226,7 +244,9 @@ export default function PagesAdminPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         {page.is_home && (
-                          <Globe className="h-4 w-4 text-primary" title="Página de inicio" />
+                          <div title="Página de inicio">
+                            <Globe className="h-4 w-4 text-primary" />
+                          </div>
                         )}
                         {page.title}
                       </div>
@@ -254,14 +274,16 @@ export default function PagesAdminPage() {
                             Editar
                           </Link>
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => openDeleteDialog(page)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {page.is_deletable !== false && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => openDeleteDialog(page)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -309,8 +331,25 @@ export default function PagesAdminPage() {
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </AlertDialogContent>
+        </AlertDialog>
+        </TabsContent>
+
+        {/* Navbar Tab */}
+        <TabsContent value="navbar">
+          <NavbarEditor />
+        </TabsContent>
+
+        {/* Footer Tab */}
+        <TabsContent value="footer">
+          <FooterEditor />
+        </TabsContent>
+
+        {/* Global Settings Tab */}
+        <TabsContent value="settings">
+          <GlobalSettingsPanel />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

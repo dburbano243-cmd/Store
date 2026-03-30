@@ -1,6 +1,5 @@
 /**
  * Product-related type definitions
- * These are the public interfaces used throughout the application
  */
 
 export interface ProductMedia {
@@ -20,18 +19,34 @@ export interface ProductPrice {
   id: string
   amount: number
   is_active: boolean
-  source: string | null
-  effective_at: string | null
-  expires_at: string | null
 }
 
-export interface ProductDiscount {
+export interface AttributeType {
   id: string
-  discount_amount_in_cents: number | null
-  discount_percent: number | null
-  start_at: string | null
-  end_at: string | null
+  name: string
+  display_name: string
+  type: 'select' | 'color' | 'text' | 'number'
+  created_at: string
+}
+
+export interface ProductAttribute {
+  id: string
+  product_id: string
+  attribute_type_id: string
+  attribute_type?: AttributeType
+  values: string[] | { value: string; hex?: string }[]
+  created_at: string
+}
+
+export interface ProductVariant {
+  id: string
+  product_id: string
+  sku: string | null
+  attributes: Record<string, string>
+  price_adjustment: number
+  stock: number
   is_active: boolean
+  created_at: string
 }
 
 export interface Product {
@@ -39,28 +54,27 @@ export interface Product {
   slug?: string
   name: string
   description: string
-  /** Active COP price (from product_prices) */
+  short_description?: string
+  sku?: string
+  weight?: number
+  dimensions?: { largo?: number; ancho?: number; alto?: number }
+  is_active: boolean
+  is_featured: boolean
+  category_id?: string
   price: number
-  /** Original price before discount (from product_price_discounts or product_prices) */
-  priceWithDiscount: number
-  /** Price in COP */
   priceCOP: number
   stock: number
   stars: number
   reviews: number
-  features: string[]
   media: ProductMedia[]
-  discounts?: Array<{
-    id: string
-    discount_amount?: number
-    discount_percent?: number
-    metadata?: any
-    is_active: boolean
-  }>
+  attributes?: ProductAttribute[]
+  variants?: ProductVariant[]
 }
 
 export interface CartItem extends Product {
   quantity: number
+  selectedVariant?: ProductVariant
+  selectedAttributes?: Record<string, string>
 }
 
 export interface MediaFile {
@@ -69,36 +83,24 @@ export interface MediaFile {
   name: string
 }
 
-/**
- * Payload for creating/updating products via API
- */
 export interface ProductPayload {
   name: string
   slug?: string
   description: string
+  short_description?: string
+  sku?: string
+  weight?: number
+  dimensions?: { largo?: number; ancho?: number; alto?: number }
   stock: number
   stars?: number
   reviews?: number
+  is_active?: boolean
+  is_featured?: boolean
+  category_id?: string
 }
 
-/**
- * Payload for creating product prices
- */
 export interface ProductPricePayload {
   product_id: string
   amount: number
-  is_active?: boolean
-}
-
-/**
- * Payload for creating product discounts
- */
-export interface ProductPriceDiscountPayload {
-  product_id: string
-  discount_amount?: number | null
-  discount_percent?: number | null
-  start_at?: string | null
-  end_at?: string | null
-  metadata?: any
   is_active?: boolean
 }

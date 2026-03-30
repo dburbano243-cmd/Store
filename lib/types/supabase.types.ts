@@ -21,16 +21,20 @@ export interface SupabaseProductPrice {
   id: string
   amount: number
   is_active: boolean
-  source: string | null
-  effective_at: string | null
-  expires_at: string | null
 }
 
-export interface SupabaseProductDiscount {
+export interface SupabaseProductAttribute {
   id: string
-  discount_amount: number | null
-  discount_amount_in_cents: number | null
-  discount_percent: number | null
+  attribute_type_id: string
+  values: string[]
+}
+
+export interface SupabaseProductVariant {
+  id: string
+  sku: string | null
+  attributes: Record<string, string>
+  price_adjustment: number
+  stock: number
   is_active: boolean
 }
 
@@ -39,12 +43,19 @@ export interface SupabaseProduct {
   slug: string | null
   name: string
   description: string
+  short_description: string | null
+  sku: string | null
   stock: number
   stars: number
   reviews: number
+  weight: number | null
+  dimensions: Record<string, number> | null
+  is_active: boolean
+  is_featured: boolean
+  category_id: string | null
   created_at: string
-  product_features: { id: string; name: string }[]
+  product_attributes: SupabaseProductAttribute[]
   product_media: SupabaseProductMedia[]
   product_prices: SupabaseProductPrice[]
-  product_price_discounts: SupabaseProductDiscount[]
+  product_variants?: SupabaseProductVariant[]
 }

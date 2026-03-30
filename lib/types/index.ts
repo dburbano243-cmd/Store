@@ -7,13 +7,13 @@
 export type {
   ProductMedia,
   ProductPrice,
-  ProductDiscount,
+  ProductAttribute,
+  ProductVariant,
   Product,
   CartItem,
   MediaFile,
   ProductPayload,
   ProductPricePayload,
-  ProductPriceDiscountPayload,
 } from "./product.types"
 
 // Order types (public)
@@ -31,7 +31,8 @@ export type {
 export type {
   SupabaseProductMedia,
   SupabaseProductPrice,
-  SupabaseProductDiscount,
+  SupabaseProductAttribute,
+  SupabaseProductVariant,
   SupabaseProduct,
 } from "./supabase.types"
 

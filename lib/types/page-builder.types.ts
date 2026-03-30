@@ -17,6 +17,7 @@ export interface Page {
   status: PageStatus
   parent_id: string | null
   is_home: boolean
+  is_deletable: boolean
   seo_metadata: SEOMetadata
   created_at: string
   updated_at: string

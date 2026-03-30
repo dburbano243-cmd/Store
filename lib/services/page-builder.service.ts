@@ -520,3 +520,140 @@ export async function deleteMediaAsset(id: string): Promise<void> {
     throw new Error(`Error deleting media asset: ${error.message}`)
   }
 }
+
+// =============================================
+// SITE SETTINGS SERVICE (Global Styles)
+// =============================================
+
+export interface GlobalStyles {
+  primary_color: string
+  secondary_color: string
+  accent_color: string
+  background_color: string
+  text_color: string
+  heading_font: string
+  body_font: string
+  heading_size_h1: string
+  heading_size_h2: string
+  heading_size_h3: string
+  heading_size_h4: string
+  body_size: string
+  small_size: string
+  heading_weight: string
+  body_weight: string
+  heading_line_height: string
+  body_line_height: string
+  border_radius: string
+  custom_css: string
+}
+
+const DEFAULT_GLOBAL_STYLES: GlobalStyles = {
+  primary_color: '#3b82f6',
+  secondary_color: '#6b7280',
+  accent_color: '#10b981',
+  background_color: '#ffffff',
+  text_color: '#111827',
+  heading_font: 'Inter',
+  body_font: 'Inter',
+  heading_size_h1: '2.25rem',
+  heading_size_h2: '1.875rem',
+  heading_size_h3: '1.5rem',
+  heading_size_h4: '1.25rem',
+  body_size: '1rem',
+  small_size: '0.875rem',
+  heading_weight: '700',
+  body_weight: '400',
+  heading_line_height: '1.2',
+  body_line_height: '1.6',
+  border_radius: '0.5rem',
+  custom_css: '',
+}
+
+/**
+ * Obtener configuración global de estilos
+ */
+export async function getGlobalStyles(): Promise<GlobalStyles> {
+  const { data, error } = await supabase
+    .from('site_settings')
+    .select('*')
+    .limit(1)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No settings found, return defaults
+      return DEFAULT_GLOBAL_STYLES
+    }
+    console.error('Error fetching global styles:', error)
+    throw new Error(`Error fetching global styles: ${error.message}`)
+  }
+
+  return {
+    primary_color: data.primary_color || DEFAULT_GLOBAL_STYLES.primary_color,
+    secondary_color: data.secondary_color || DEFAULT_GLOBAL_STYLES.secondary_color,
+    accent_color: data.accent_color || DEFAULT_GLOBAL_STYLES.accent_color,
+    background_color: data.background_color || DEFAULT_GLOBAL_STYLES.background_color,
+    text_color: data.text_color || DEFAULT_GLOBAL_STYLES.text_color,
+    heading_font: data.heading_font || DEFAULT_GLOBAL_STYLES.heading_font,
+    body_font: data.body_font || DEFAULT_GLOBAL_STYLES.body_font,
+    heading_size_h1: data.heading_size_h1 || DEFAULT_GLOBAL_STYLES.heading_size_h1,
+    heading_size_h2: data.heading_size_h2 || DEFAULT_GLOBAL_STYLES.heading_size_h2,
+    heading_size_h3: data.heading_size_h3 || DEFAULT_GLOBAL_STYLES.heading_size_h3,
+    heading_size_h4: data.heading_size_h4 || DEFAULT_GLOBAL_STYLES.heading_size_h4,
+    body_size: data.body_size || DEFAULT_GLOBAL_STYLES.body_size,
+    small_size: data.small_size || DEFAULT_GLOBAL_STYLES.small_size,
+    heading_weight: data.heading_weight || DEFAULT_GLOBAL_STYLES.heading_weight,
+    body_weight: data.body_weight || DEFAULT_GLOBAL_STYLES.body_weight,
+    heading_line_height: data.heading_line_height || DEFAULT_GLOBAL_STYLES.heading_line_height,
+    body_line_height: data.body_line_height || DEFAULT_GLOBAL_STYLES.body_line_height,
+    border_radius: data.border_radius || DEFAULT_GLOBAL_STYLES.border_radius,
+    custom_css: data.custom_css || DEFAULT_GLOBAL_STYLES.custom_css,
+  }
+}
+
+/**
+ * Actualizar configuración global de estilos
+ */
+export async function updateGlobalStyles(styles: Partial<GlobalStyles>): Promise<GlobalStyles> {
+  // First check if settings exist
+  const { data: existing } = await supabase
+    .from('site_settings')
+    .select('id')
+    .limit(1)
+    .single()
+
+  if (existing) {
+    // Update existing settings
+    const { data, error } = await supabase
+      .from('site_settings')
+      .update({
+        ...styles,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating global styles:', error)
+      throw new Error(`Error updating global styles: ${error.message}`)
+    }
+
+    return getGlobalStyles()
+  } else {
+    // Create new settings
+    const { error } = await supabase
+      .from('site_settings')
+      .insert({
+        ...DEFAULT_GLOBAL_STYLES,
+        ...styles,
+      })
+
+    if (error) {
+      console.error('Error creating global styles:', error)
+      throw new Error(`Error creating global styles: ${error.message}`)
+    }
+
+    return getGlobalStyles()
+  }
+}

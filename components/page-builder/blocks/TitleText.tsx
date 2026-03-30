@@ -43,7 +43,7 @@ export function TitleText({
     text = defaultContent.text,
     alignment = defaultContent.alignment,
     titleSize = defaultContent.titleSize,
-  } = content as TitleTextContent
+  } = content as unknown as TitleTextContent
 
   const handleTextChange = (field: string, value: string) => {
     if (onContentChange) {
@@ -80,6 +80,7 @@ export function TitleText({
                   "font-bold mb-6 outline-none focus:ring-2 focus:ring-primary rounded px-2",
                   titleSizeClasses[titleSize]
                 )}
+                style={{ color: styles?.textColor }}
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => handleTextChange("title", e.currentTarget.textContent || "")}
@@ -87,7 +88,8 @@ export function TitleText({
                 {title}
               </h2>
               <div
-                className="text-muted-foreground text-lg leading-relaxed whitespace-pre-line outline-none focus:ring-2 focus:ring-primary rounded px-2"
+                className="text-lg leading-relaxed whitespace-pre-line outline-none focus:ring-2 focus:ring-primary rounded px-2"
+                style={{ color: styles?.textColor ? `${styles.textColor}99` : undefined, opacity: styles?.textColor ? 1 : 0.7 }}
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => handleTextChange("text", e.currentTarget.textContent || "")}
@@ -97,10 +99,16 @@ export function TitleText({
             </>
           ) : (
             <>
-              <h2 className={cn("font-bold mb-6", titleSizeClasses[titleSize])}>
+              <h2 
+                className={cn("font-bold mb-6", titleSizeClasses[titleSize])}
+                style={{ color: styles?.textColor }}
+              >
                 {title}
               </h2>
-              <div className="text-muted-foreground text-lg leading-relaxed whitespace-pre-line">
+              <div 
+                className="text-lg leading-relaxed whitespace-pre-line"
+                style={{ color: styles?.textColor ? `${styles.textColor}99` : undefined, opacity: styles?.textColor ? 1 : 0.7 }}
+              >
                 {text}
               </div>
             </>

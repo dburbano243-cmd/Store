@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback, useRef } from "react"
+import React, { useState, useCallback, useRef, useEffect } from "react"
 import useSWR from "swr"
 import {
   fetchProducts,
@@ -15,6 +15,7 @@ import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -41,8 +42,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import Image from "next/image"
 import {
   Plus,
@@ -57,38 +66,50 @@ import {
   X,
   FileVideo,
   DollarSign,
-  Tag,
-  BarChart3,
+  Sliders,
+  Layers,
 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 
 /* ------------------------------------------------------------------ */
-/*  Types and helpers                                                  */
+/*  Types                                                              */
 /* ------------------------------------------------------------------ */
+
+interface AttributeType {
+  id: string
+  name: string
+  display_name: string
+  type: 'select' | 'color' | 'text' | 'number'
+}
+
+interface AttributeValue {
+  name: string
+  hex?: string // Para colores
+  unit?: string // Para peso (g, kg)
+}
+
+interface ProductAttribute {
+  id?: string
+  attribute_type_id: string
+  values: AttributeValue[]
+  _deleted?: boolean
+}
 
 interface ProductFormData {
   name: string
   slug: string
   description: string
+  short_description: string
+  sku: string
   stock: string
-  stars: string
-  reviews: string
+  weight: string
+  is_active: boolean
+  is_featured: boolean
 }
 
 interface PriceFormData {
   amount: string
   is_active: boolean
-}
-
-interface DiscountForm {
-  id?: string  // If exists, it's an existing discount to update
-  discount_amount: string
-  discount_percent: string
-  start_at: string
-  end_at: string
-  metadata_units: string
-  is_active: boolean
-  _deleted?: boolean  // Mark for deletion
 }
 
 interface MediaFile {
@@ -105,14 +126,69 @@ interface ExistingMedia {
   storage_path: string
 }
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+
+function getMediaUrl(media: { url?: string | null; storage_path?: string | null }): string {
+  if (media.url) return media.url
+  if (media.storage_path) {
+    return `${SUPABASE_URL}/storage/v1/object/public/storage/${media.storage_path}`
+  }
+  return "/images/placeholder.svg"
+}
+
+function PesoInput({ onAdd }: { onAdd: (name: string, unit: string) => void }) {
+  const [value, setValue] = useState("")
+  const [unit, setUnit] = useState("g")
+
+  const handleAdd = () => {
+    if (value) {
+      onAdd(value, unit)
+      setValue("")
+    }
+  }
+
+  return (
+    <div className="flex gap-2">
+      <Input
+        placeholder="Valor (500, 1, 2...)"
+        type="number"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="flex-1"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault()
+            handleAdd()
+          }
+        }}
+      />
+      <Select value={unit} onValueChange={setUnit}>
+        <SelectTrigger className="w-20">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="g">g</SelectItem>
+          <SelectItem value="kg">kg</SelectItem>
+        </SelectContent>
+      </Select>
+      <Button type="button" size="sm" onClick={handleAdd}>
+        <Plus className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+}
+
 function emptyForm(): ProductFormData {
   return {
     name: "",
     slug: "",
     description: "",
+    short_description: "",
+    sku: "",
     stock: "0",
-    stars: "0",
-    reviews: "0",
+    weight: "",
+    is_active: true,
+    is_featured: false,
   }
 }
 
@@ -121,9 +197,12 @@ function productToForm(p: Product): ProductFormData {
     name: p.name,
     slug: p.slug ?? "",
     description: p.description,
+    short_description: (p as any).short_description ?? "",
+    sku: (p as any).sku ?? "",
     stock: String(p.stock),
-    stars: String(p.stars),
-    reviews: String(p.reviews),
+    weight: (p as any).weight ? String((p as any).weight) : "",
+    is_active: (p as any).is_active ?? true,
+    is_featured: (p as any).is_featured ?? false,
   }
 }
 
@@ -132,22 +211,14 @@ function formToPayload(f: ProductFormData): ProductPayload {
     name: f.name,
     slug: f.slug || f.name.toLowerCase().replace(/\s+/g, "-"),
     description: f.description,
+    short_description: f.short_description || undefined,
+    sku: f.sku || undefined,
     stock: Number(f.stock) || 0,
-    stars: Number(f.stars) || 0,
-    reviews: Number(f.reviews) || 0,
-  }
-}
-
-// Helper to format timestamp from DB to datetime-local input format
-function formatDateForInput(dateString: string | null | undefined): string {
-  if (!dateString) return ""
-  try {
-    const date = new Date(dateString)
-    if (isNaN(date.getTime())) return ""
-    // Format: YYYY-MM-DDTHH:mm
-    return date.toISOString().slice(0, 16)
-  } catch {
-    return ""
+    weight: f.weight ? Number(f.weight) : undefined,
+    is_active: f.is_active,
+    is_featured: f.is_featured,
+    stars: 0,
+    reviews: 0,
   }
 }
 
@@ -156,7 +227,14 @@ function formatDateForInput(dateString: string | null | undefined): string {
 /* ------------------------------------------------------------------ */
 
 export default function AdminProductsPage() {
-  const { data: products, isLoading, mutate } = useSWR("admin-products", fetchProducts)
+  const { data: products, isLoading, mutate } = useSWR("admin-products", fetchProducts, {
+    revalidateOnFocus: true,
+    revalidateOnMount: true,
+    dedupingInterval: 0,
+  })
+
+  // Attribute types from DB
+  const [attributeTypes, setAttributeTypes] = useState<AttributeType[]>([])
 
   const [search, setSearch] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -165,13 +243,25 @@ export default function AdminProductsPage() {
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null)
   const [form, setForm] = useState<ProductFormData>(emptyForm)
   const [price, setPrice] = useState<PriceFormData>({ amount: "0", is_active: true })
-  const [discounts, setDiscounts] = useState<DiscountForm[]>([])
+  const [attributes, setAttributes] = useState<ProductAttribute[]>([])
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [existingMedia, setExistingMedia] = useState<ExistingMedia[]>([])
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Load attribute types on mount
+  useEffect(() => {
+    const loadAttributeTypes = async () => {
+      const { data } = await supabase
+        .from("attribute_types")
+        .select("*")
+        .order("display_name")
+      if (data) setAttributeTypes(data)
+    }
+    loadAttributeTypes()
+  }, [])
 
   const filteredProducts = (products ?? []).filter(
     (p) =>
@@ -182,7 +272,11 @@ export default function AdminProductsPage() {
 
   const handleField = useCallback(
     (field: keyof ProductFormData) =>
-      (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | boolean) => {
+        if (typeof e === "boolean") {
+          setForm((prev) => ({ ...prev, [field]: e }))
+          return
+        }
         const value = e.target.value
         setForm((prev) => {
           if (field === "name") {
@@ -209,41 +303,61 @@ export default function AdminProductsPage() {
     []
   )
 
-  const handleDiscountField = useCallback(
-    (index: number, field: keyof DiscountForm) =>
-      (e: React.ChangeEvent<HTMLInputElement> | boolean) => {
-        setDiscounts((prev) => {
-          const copy = [...prev]
-          if (field === "is_active") {
-            copy[index] = { ...copy[index], is_active: Boolean(e) }
-          } else {
-            const value = (e as React.ChangeEvent<HTMLInputElement>).target.value
-            copy[index] = { ...copy[index], [field]: value }
-          }
-          return copy
-        })
-      },
-    []
-  )
-
-  const addDiscountRow = () => {
-    setDiscounts((prev) => [
+  // Attribute handlers
+  const addAttribute = () => {
+    if (attributeTypes.length === 0) return
+    setAttributes((prev) => [
       ...prev,
-      { discount_amount: "0", discount_percent: "", start_at: "", end_at: "", metadata_units: "0", is_active: true },
+      { attribute_type_id: attributeTypes[0].id, values: [] },
     ])
   }
 
-  const removeDiscountRow = (index: number) => {
-    setDiscounts((prev) => {
-      const discount = prev[index]
-      // If it has an ID, mark for deletion instead of removing from array
-      if (discount.id) {
+  const removeAttribute = (index: number) => {
+    setAttributes((prev) => {
+      const attr = prev[index]
+      if (attr.id) {
         const copy = [...prev]
         copy[index] = { ...copy[index], _deleted: true }
         return copy
       }
-      // If it's a new discount (no ID), just remove it
       return prev.filter((_, i) => i !== index)
+    })
+  }
+
+  const updateAttributeType = (index: number, typeId: string) => {
+    setAttributes((prev) => {
+      const copy = [...prev]
+      copy[index] = { ...copy[index], attribute_type_id: typeId }
+      return copy
+    })
+  }
+
+  const addAttributeValue = (index: number, value: AttributeValue) => {
+    setAttributes((prev) => {
+      const copy = [...prev]
+      copy[index] = { ...copy[index], values: [...copy[index].values, value] }
+      return copy
+    })
+  }
+
+  const removeAttributeValue = (attrIndex: number, valueIndex: number) => {
+    setAttributes((prev) => {
+      const copy = [...prev]
+      copy[attrIndex] = { 
+        ...copy[attrIndex], 
+        values: copy[attrIndex].values.filter((_, i) => i !== valueIndex) 
+      }
+      return copy
+    })
+  }
+
+  const updateAttributeValue = (attrIndex: number, valueIndex: number, updatedValue: Partial<AttributeValue>) => {
+    setAttributes((prev) => {
+      const copy = [...prev]
+      const values = [...copy[attrIndex].values]
+      values[valueIndex] = { ...values[valueIndex], ...updatedValue }
+      copy[attrIndex] = { ...copy[attrIndex], values }
+      return copy
     })
   }
 
@@ -334,34 +448,64 @@ export default function AdminProductsPage() {
     setEditingProduct(null)
     setForm(emptyForm())
     setPrice({ amount: "0", is_active: true })
-    setDiscounts([])
+    setAttributes([])
     setMediaFiles([])
     setExistingMedia([])
     setDialogOpen(true)
   }
 
   const openEdit = async (product: Product) => {
-    setEditingProduct(product)
-    setForm(productToForm(product))
+    setDialogOpen(true)
     
-    // Load price (all prices in COP)
-    setPrice({ amount: String(product.priceCOP ?? product.price ?? 0), is_active: true })
+    // Fetch fresh product data directly from DB to avoid cache issues
+    const { data: freshProduct } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", product.id)
+      .single()
+    
+    // Get fresh price
+    const { data: priceData } = await supabase
+      .from("product_prices")
+      .select("amount, is_active")
+      .eq("product_id", product.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+    
+    const productData = freshProduct || product
+    setEditingProduct({ ...product, description: productData.description })
+    setForm({
+      name: productData.name || "",
+      slug: productData.slug || "",
+      description: productData.description || "",
+      short_description: productData.short_description || "",
+      sku: productData.sku || "",
+      stock: String(productData.stock || 0),
+      weight: productData.weight ? String(productData.weight) : "",
+      is_active: productData.is_active ?? true,
+      is_featured: productData.is_featured ?? false,
+    })
+    setPrice({ 
+      amount: String(priceData?.amount ?? product.priceCOP ?? product.price ?? 0), 
+      is_active: priceData?.is_active ?? true 
+    })
 
-    // Load discounts
-    if (product.discounts && product.discounts.length > 0) {
-      const ds = product.discounts.map((d: any) => ({
-        id: d.id,  // Keep the ID to know if it's existing
-        discount_amount: d.discount_amount ? String(d.discount_amount) : "",
-        discount_percent: d.discount_percent ? String(d.discount_percent) : "",
-        start_at: formatDateForInput(d.start_at),
-        end_at: formatDateForInput(d.end_at),
-        metadata_units: d.metadata?.units ? String(d.metadata.units) : "0",
-        is_active: Boolean(d.is_active),
-        _deleted: false,
-      }))
-      setDiscounts(ds)
+    // Load attributes
+    const { data: attrData } = await supabase
+      .from("product_attributes")
+      .select("id, attribute_type_id, values")
+      .eq("product_id", product.id)
+
+    if (attrData) {
+      setAttributes(attrData.map((a) => ({
+        id: a.id,
+        attribute_type_id: a.attribute_type_id,
+        values: a.values || [],
+      })))
     } else {
-      setDiscounts([])
+      setAttributes([])
     }
 
     // Load existing media
@@ -373,7 +517,6 @@ export default function AdminProductsPage() {
 
     setExistingMedia(mediaData || [])
     setMediaFiles([])
-    setDialogOpen(true)
   }
 
   const openDelete = (product: Product) => {
@@ -394,7 +537,7 @@ export default function AdminProductsPage() {
       }
 
       if (savedProduct) {
-        // Create/update price (all prices in COP)
+        // Create/update price
         const amountNum = Number(price.amount) || 0
         await createProductPrice({
           product_id: savedProduct.id,
@@ -402,54 +545,24 @@ export default function AdminProductsPage() {
           is_active: price.is_active,
         })
 
-        // Handle discounts using admin API (bypasses RLS)
-        for (const d of discounts) {
-          const discAmount = d.discount_amount ? Number(d.discount_amount) : null
-          const discPercent = d.discount_percent ? Number(d.discount_percent) : null
-          const metadata = { units: Number(d.metadata_units || 0) }
-          
-          // If marked for deletion
-          if (d._deleted && d.id) {
-            await fetch("/api/admin/discounts", {
-              method: "DELETE",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: d.id }),
-            })
+        // Handle attributes
+        for (const attr of attributes) {
+          if (attr._deleted && attr.id) {
+            await supabase.from("product_attributes").delete().eq("id", attr.id)
             continue
           }
-          
-          // Skip deleted items
-          if (d._deleted) continue
-          
-          // If has ID, update existing
-          if (d.id) {
-            await fetch("/api/admin/discounts", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                id: d.id,
-                discount_amount: discAmount,
-                discount_percent: discPercent,
-                start_at: d.start_at || undefined,
-                end_at: d.end_at || undefined,
-                metadata,
-                is_active: d.is_active,
-              }),
-            })
+          if (attr._deleted) continue
+
+          if (attr.id) {
+            await supabase
+              .from("product_attributes")
+              .update({ values: attr.values })
+              .eq("id", attr.id)
           } else {
-            // Create new
-            await fetch("/api/admin/discounts", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                product_id: savedProduct.id,
-                discount_amount: discAmount,
-                discount_percent: discPercent,
-                start_at: d.start_at || undefined,
-                end_at: d.end_at || undefined,
-                metadata,
-                is_active: d.is_active,
-              }),
+            await supabase.from("product_attributes").insert({
+              product_id: savedProduct.id,
+              attribute_type_id: attr.attribute_type_id,
+              values: attr.values,
             })
           }
         }
@@ -459,10 +572,7 @@ export default function AdminProductsPage() {
       }
 
       setDialogOpen(false)
-      // Delay mutate to avoid race condition with auth token
-      setTimeout(() => {
-        mutate()
-      }, 100)
+      setTimeout(() => mutate(), 100)
     } catch (err) {
       console.error("Save error:", err)
     } finally {
@@ -473,9 +583,8 @@ export default function AdminProductsPage() {
   const handleDelete = async () => {
     if (!deletingProduct) return
     setDeleting(true)
-    
+
     try {
-      // Use admin API to delete product (bypasses RLS)
       const response = await fetch("/api/admin/products", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -489,14 +598,16 @@ export default function AdminProductsPage() {
 
       setDeleteDialogOpen(false)
       setDeletingProduct(null)
-      setTimeout(() => {
-        mutate()
-      }, 100)
+      setTimeout(() => mutate(), 100)
     } catch (err) {
       console.error("Delete error:", err)
     } finally {
       setDeleting(false)
     }
+  }
+
+  const getAttributeTypeName = (id: string) => {
+    return attributeTypes.find((t) => t.id === id)?.display_name || "Atributo"
   }
 
   return (
@@ -531,13 +642,13 @@ export default function AdminProductsPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
-              <TableHead className="text-xs font-semibold text-muted-foreground w-12"></TableHead>
-              <TableHead className="text-xs font-semibold text-muted-foreground">Nombre</TableHead>
-              <TableHead className="text-xs font-semibold text-muted-foreground">Slug</TableHead>
-              <TableHead className="text-xs font-semibold text-muted-foreground text-right">Precio</TableHead>
-              <TableHead className="text-xs font-semibold text-muted-foreground text-center">Stock</TableHead>
-              <TableHead className="text-xs font-semibold text-muted-foreground text-center">Rating</TableHead>
-              <TableHead className="text-xs font-semibold text-muted-foreground text-right">Acciones</TableHead>
+              <TableHead className="w-12"></TableHead>
+              <TableHead className="text-xs font-semibold">Nombre</TableHead>
+              <TableHead className="text-xs font-semibold">SKU</TableHead>
+              <TableHead className="text-xs font-semibold text-right">Precio</TableHead>
+              <TableHead className="text-xs font-semibold text-center">Stock</TableHead>
+              <TableHead className="text-xs font-semibold text-center">Estado</TableHead>
+              <TableHead className="text-xs font-semibold text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -556,9 +667,7 @@ export default function AdminProductsPage() {
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Package className="h-8 w-8" />
                     <p className="text-sm">
-                      {search
-                        ? "No se encontraron productos con esa busqueda."
-                        : "Aun no hay productos. Crea el primero."}
+                      {search ? "No se encontraron productos." : "Aun no hay productos."}
                     </p>
                   </div>
                 </TableCell>
@@ -567,10 +676,10 @@ export default function AdminProductsPage() {
               filteredProducts.map((product) => (
                 <TableRow key={product.id} className="group">
                   <TableCell className="w-12">
-                    {product.media?.[0]?.url ? (
-                      <div className="relative h-10 w-10 overflow-hidden rounded-md border border-border">
+                    {product.media?.[0] ? (
+                      <div className="relative h-10 w-10 overflow-hidden rounded-md border">
                         <Image
-                          src={product.media[1]?.url || product.media[0].url}
+                          src={getMediaUrl(product.media[0])}
                           alt={product.name}
                           fill
                           className="object-cover"
@@ -578,61 +687,43 @@ export default function AdminProductsPage() {
                         />
                       </div>
                     ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-muted">
                         <ImageIcon className="h-4 w-4 text-muted-foreground" />
                       </div>
                     )}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-foreground">
-                        {product.name}
-                      </span>
+                      <span className="text-sm font-medium">{product.name}</span>
                       <span className="text-xs text-muted-foreground line-clamp-1">
-                        {product.description}
+                        {product.slug}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="font-mono text-xs">
-                      {product.slug ?? "-"}
+                      {(product as any).sku || "-"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-sm">
                     ${product.price.toLocaleString("es-CO")}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Badge
-                      variant={product.stock > 0 ? "default" : "destructive"}
-                      className="tabular-nums"
-                    >
+                    <Badge variant={product.stock > 0 ? "default" : "destructive"}>
                       {product.stock}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">
-                    <span className="inline-flex items-center gap-1 text-sm">
-                      <Star className="h-3 w-3 fill-current text-yellow-500" />
-                      {product.stars}
-                    </span>
+                    <Badge variant={(product as any).is_active !== false ? "default" : "secondary"}>
+                      {(product as any).is_active !== false ? "Activo" : "Inactivo"}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => openEdit(product)}
-                        aria-label={`Editar ${product.name}`}
-                      >
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => openDelete(product)}
-                        aria-label={`Eliminar ${product.name}`}
-                      >
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => openDelete(product)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -644,7 +735,6 @@ export default function AdminProductsPage() {
         </Table>
       </div>
 
-      {/* Product count */}
       {!isLoading && (
         <p className="text-xs text-muted-foreground">
           {filteredProducts.length} de {products?.length ?? 0} producto(s)
@@ -653,7 +743,7 @@ export default function AdminProductsPage() {
 
       {/* Create / Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl p-0">
+        <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-3xl p-0">
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="text-xl">
               {editingProduct ? "Editar producto" : "Nuevo producto"}
@@ -671,9 +761,9 @@ export default function AdminProductsPage() {
                   <DollarSign className="h-4 w-4" />
                   <span className="hidden sm:inline">Precio</span>
                 </TabsTrigger>
-                <TabsTrigger value="discounts" className="gap-2">
-                  <Tag className="h-4 w-4" />
-                  <span className="hidden sm:inline">Descuentos</span>
+                <TabsTrigger value="attributes" className="gap-2">
+                  <Sliders className="h-4 w-4" />
+                  <span className="hidden sm:inline">Atributos</span>
                 </TabsTrigger>
                 <TabsTrigger value="media" className="gap-2">
                   <ImageIcon className="h-4 w-4" />
@@ -682,371 +772,426 @@ export default function AdminProductsPage() {
               </TabsList>
             </div>
 
-            {/* General Tab */}
-            <TabsContent value="general" className="p-6 pt-4 space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+            <ScrollArea className="h-[60vh]">
+              {/* General Tab */}
+              <TabsContent value="general" className="p-6 pt-4 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nombre del producto *</Label>
+                    <Input
+                      id="name"
+                      value={form.name}
+                      onChange={handleField("name")}
+                      placeholder="Ej: Camiseta deportiva"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="slug">Slug (URL)</Label>
+                    <Input
+                      id="slug"
+                      value={form.slug}
+                      onChange={handleField("slug")}
+                      placeholder="camiseta-deportiva"
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="sku">SKU</Label>
+                    <Input
+                      id="sku"
+                      value={form.sku}
+                      onChange={handleField("sku")}
+                      placeholder="CAM-DEP-001"
+                      className="font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="stock">Stock</Label>
+                    <Input
+                      id="stock"
+                      type="number"
+                      value={form.stock}
+                      onChange={handleField("stock")}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nombre del producto</Label>
+                  <Label htmlFor="short_description">Descripcion corta</Label>
                   <Input
-                    id="name"
-                    value={form.name}
-                    onChange={handleField("name")}
-                    placeholder="Ej: Camiseta deportiva"
+                    id="short_description"
+                    value={form.short_description}
+                    onChange={handleField("short_description")}
+                    placeholder="Resumen breve del producto"
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="slug">Slug (URL)</Label>
-                  <Input
-                    id="slug"
-                    value={form.slug}
-                    onChange={handleField("slug")}
-                    placeholder="camiseta-deportiva"
-                    className="font-mono text-sm"
+                  <Label htmlFor="description">Descripcion completa *</Label>
+                  <RichTextEditor
+                    value={form.description}
+                    onChange={(val) => setForm(prev => ({ ...prev, description: val }))}
+                    placeholder="Describe las caracteristicas del producto..."
                   />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripcion</Label>
-                <Textarea
-                  id="description"
-                  value={form.description}
-                  onChange={handleField("description")}
-                  placeholder="Describe las caracteristicas del producto..."
-                  rows={4}
-                  className="resize-none"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                        <Package className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <Label htmlFor="stock" className="text-xs text-muted-foreground">Stock</Label>
-                        <Input
-                          id="stock"
-                          type="number"
-                          value={form.stock}
-                          onChange={handleField("stock")}
-                          className="h-8 mt-1"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/10">
-                        <Star className="h-5 w-5 text-yellow-500" />
-                      </div>
-                      <div className="flex-1">
-                        <Label htmlFor="stars" className="text-xs text-muted-foreground">Estrellas</Label>
-                        <Input
-                          id="stars"
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          max="5"
-                          value={form.stars}
-                          onChange={handleField("stars")}
-                          className="h-8 mt-1"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
-                        <BarChart3 className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <div className="flex-1">
-                        <Label htmlFor="reviews" className="text-xs text-muted-foreground">Reviews</Label>
-                        <Input
-                          id="reviews"
-                          type="number"
-                          value={form.reviews}
-                          onChange={handleField("reviews")}
-                          className="h-8 mt-1"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            {/* Pricing Tab */}
-            <TabsContent value="pricing" className="p-6 pt-4 space-y-4">
-              <Card>
-                <CardContent className="p-4 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-green-600" />
-                    <h3 className="font-medium">Precio del producto</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="weight">Peso (kg)</Label>
+                    <Input
+                      id="weight"
+                      type="number"
+                      step="0.01"
+                      value={form.weight}
+                      onChange={handleField("weight")}
+                      placeholder="0.5"
+                    />
                   </div>
-                  
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="price-amount">Monto</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                        <Input
-                          id="price-amount"
-                          type="number"
-                          value={price.amount}
-                          onChange={handlePriceField("amount")}
-                          className="pl-7"
-                          placeholder="0"
-                        />
-                      </div>
+                  <div className="space-y-4 pt-6">
+                    <div className="flex items-center justify-between">
+                      <Label>Producto activo</Label>
+                      <Switch
+                        checked={form.is_active}
+                        onCheckedChange={(v) => handleField("is_active")(v)}
+                      />
                     </div>
-
-                    <div className="space-y-2">
-                      <Label>Estado</Label>
-                      <div className="flex items-center gap-3 h-10">
-                        <Switch
-                          checked={price.is_active}
-                          onCheckedChange={(v) => handlePriceField("is_active")(v)}
-                        />
-                        <span className="text-sm text-muted-foreground">
-                          {price.is_active ? "Activo" : "Inactivo"}
-                        </span>
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <Label>Producto destacado</Label>
+                      <Switch
+                        checked={form.is_featured}
+                        onCheckedChange={(v) => handleField("is_featured")(v)}
+                      />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                </div>
+              </TabsContent>
 
-            {/* Discounts Tab */}
-            <TabsContent value="discounts" className="p-6 pt-4 space-y-4">
-              <div className="flex items-center justify-between">
+              {/* Pricing Tab */}
+              <TabsContent value="pricing" className="p-6 pt-4 space-y-4">
+                <Card>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5 text-green-600" />
+                      <h3 className="font-medium">Precio del producto</h3>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="price-amount">Precio (COP)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input
+                            id="price-amount"
+                            type="number"
+                            value={price.amount}
+                            onChange={handlePriceField("amount")}
+                            className="pl-7"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Estado del precio</Label>
+                        <div className="flex items-center gap-3 h-10">
+                          <Switch
+                            checked={price.is_active}
+                            onCheckedChange={(v) => handlePriceField("is_active")(v)}
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            {price.is_active ? "Activo" : "Inactivo"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Attributes Tab */}
+              <TabsContent value="attributes" className="p-6 pt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium">Atributos del producto</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Agrega colores, tallas, materiales u otras caracteristicas
+                    </p>
+                  </div>
+                  <Button onClick={addAttribute} size="sm" variant="outline" className="gap-2" disabled={attributeTypes.length === 0}>
+                    <Plus className="h-4 w-4" />
+                    Agregar
+                  </Button>
+                </div>
+
+                {attributeTypes.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <Layers className="h-10 w-10 mx-auto text-muted-foreground/50" />
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        No hay tipos de atributos configurados.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Ejecuta el SQL para crear los tipos de atributos primero.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : attributes.filter((a) => !a._deleted).length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <Sliders className="h-10 w-10 mx-auto text-muted-foreground/50" />
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        No hay atributos configurados
+                      </p>
+                      <Button onClick={addAttribute} variant="link" size="sm" className="mt-2">
+                        Agregar primer atributo
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {attributes.filter((a) => !a._deleted).map((attr, idx) => {
+                      const actualIdx = attributes.findIndex((a) => a === attr)
+                      const attrType = attributeTypes.find((t) => t.id === attr.attribute_type_id)
+                      const isColor = attrType?.name === "color"
+                      const isPeso = attrType?.name === "peso"
+
+                      return (
+                        <Card key={attr.id || idx}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary">{attrType?.display_name || "Atributo"}</Badge>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => removeAttribute(actualIdx)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Tipo de atributo</Label>
+                                <Select
+                                  value={attr.attribute_type_id}
+                                  onValueChange={(v) => updateAttributeType(actualIdx, v)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {attributeTypes.map((type) => (
+                                      <SelectItem key={type.id} value={type.id}>
+                                        {type.display_name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {/* Valores existentes */}
+                              {attr.values.length > 0 && (
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Valores agregados</Label>
+                                  <div className="flex flex-wrap gap-2">
+                                    {attr.values.map((val, valIdx) => (
+                                      <div key={valIdx} className="flex items-center gap-1 bg-muted rounded-md px-2 py-1">
+                                        {isColor && val.hex && (
+                                          <div 
+                                            className="w-4 h-4 rounded-full border border-border" 
+                                            style={{ backgroundColor: val.hex }}
+                                          />
+                                        )}
+                                        <span className="text-sm">
+                                          {val.name}{val.unit ? ` ${val.unit}` : ""}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => removeAttributeValue(actualIdx, valIdx)}
+                                          className="ml-1 text-muted-foreground hover:text-destructive"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Agregar nuevo valor segun tipo */}
+                              <div className="border-t pt-3 mt-3">
+                                <Label className="text-xs mb-2 block">Agregar valor</Label>
+                                {isColor ? (
+                                  <div className="flex gap-2">
+                                    <Input
+                                      placeholder="Nombre del color (Rojo, Azul...)"
+                                      id={`color-name-${actualIdx}`}
+                                      className="flex-1"
+                                    />
+                                    <input
+                                      type="color"
+                                      id={`color-hex-${actualIdx}`}
+                                      className="w-12 h-9 rounded border cursor-pointer"
+                                      defaultValue="#000000"
+                                    />
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => {
+                                        const nameEl = document.getElementById(`color-name-${actualIdx}`) as HTMLInputElement
+                                        const hexEl = document.getElementById(`color-hex-${actualIdx}`) as HTMLInputElement
+                                        if (nameEl?.value) {
+                                          addAttributeValue(actualIdx, { name: nameEl.value, hex: hexEl?.value || "#000000" })
+                                          nameEl.value = ""
+                                        }
+                                      }}
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : isPeso ? (
+                                  <PesoInput onAdd={(name, unit) => addAttributeValue(actualIdx, { name, unit })} />
+                                ) : (
+                                  <div className="flex gap-2">
+                                    <Input
+                                      placeholder={`Agregar ${attrType?.display_name?.toLowerCase() || "valor"}...`}
+                                      id={`attr-value-${actualIdx}`}
+                                      className="flex-1"
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault()
+                                          const el = e.target as HTMLInputElement
+                                          if (el.value) {
+                                            addAttributeValue(actualIdx, { name: el.value })
+                                            el.value = ""
+                                          }
+                                        }
+                                      }}
+                                    />
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => {
+                                        const el = document.getElementById(`attr-value-${actualIdx}`) as HTMLInputElement
+                                        if (el?.value) {
+                                          addAttributeValue(actualIdx, { name: el.value })
+                                          el.value = ""
+                                        }
+                                      }}
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Media Tab */}
+              <TabsContent value="media" className="p-6 pt-4 space-y-4">
                 <div>
-                  <h3 className="font-medium">Descuentos</h3>
-                  <p className="text-sm text-muted-foreground">Configura descuentos para este producto</p>
+                  <h3 className="font-medium">Imagenes y Videos</h3>
+                  <p className="text-sm text-muted-foreground">Sube imagenes y videos del producto</p>
                 </div>
-                <Button onClick={addDiscountRow} size="sm" variant="outline" className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Agregar
-                </Button>
-              </div>
 
-              {discounts.length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <Tag className="h-10 w-10 mx-auto text-muted-foreground/50" />
-                    <p className="mt-2 text-sm text-muted-foreground">No hay descuentos configurados</p>
-                    <Button onClick={addDiscountRow} variant="link" size="sm" className="mt-2">
-                      Agregar primer descuento
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-3">
-                  {discounts.filter(d => !d._deleted).map((d, idx) => {
-                    // Find the actual index in the original array
-                    const actualIdx = discounts.findIndex(disc => disc === d)
-                    return (
-                    <Card key={d.id || idx}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <span className="text-sm font-medium">Descuento {idx + 1}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => removeDiscountRow(actualIdx)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Porcentaje (%)</Label>
-                            <Input
-                              type="number"
-                              value={d.discount_percent}
-                              onChange={handleDiscountField(actualIdx, "discount_percent")}
-                              placeholder="10"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Monto fijo</Label>
-                            <Input
-                              type="number"
-                              value={d.discount_amount}
-                              onChange={handleDiscountField(actualIdx, "discount_amount")}
-                              placeholder="5000"
-                            />
-                          </div>
+                <div
+                  className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <Upload className="h-10 w-10 mx-auto text-muted-foreground/50" />
+                  <p className="mt-2 text-sm font-medium">Haz clic para subir archivos</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Imagenes (JPG, PNG, WebP) o Videos (MP4, MOV)
+                  </p>
+                </div>
 
-                          <div className="space-y-1">
-                            <Label className="text-xs">Fecha inicio</Label>
-                            <Input
-                              type="datetime-local"
-                              value={d.start_at}
-                              onChange={handleDiscountField(actualIdx, "start_at")}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Fecha fin</Label>
-                            <Input
-                              type="datetime-local"
-                              value={d.end_at}
-                              onChange={handleDiscountField(actualIdx, "end_at")}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Estado</Label>
-                            <div className="flex items-center gap-2 h-10">
-                              <Switch
-                                checked={d.is_active}
-                                onCheckedChange={(v) => handleDiscountField(actualIdx, "is_active")(v)}
+                {existingMedia.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm">Archivos actuales</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {existingMedia.map((media) => (
+                        <div key={media.id} className="relative group">
+                          <div className="aspect-square rounded-lg overflow-hidden border bg-muted">
+                            {media.media_type === "video" ? (
+                              <video 
+                                src={getMediaUrl(media)} 
+                                className="w-full h-full object-cover"
+                                muted
                               />
-                              <span className="text-xs text-muted-foreground">
-                                {d.is_active ? "Activo" : "Inactivo"}
-                              </span>
-                            </div>
+                            ) : (
+                              <Image src={getMediaUrl(media)} alt={media.file_name || "Producto"} fill className="object-cover" sizes="150px" />
+                            )}
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => removeExistingMedia(media)}
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )
-                  })}
-                </div>
-              )}
-            </TabsContent>
-
-            {/* Media Tab */}
-            <TabsContent value="media" className="p-6 pt-4 space-y-4">
-              <div>
-                <h3 className="font-medium">Imagenes y Videos</h3>
-                <p className="text-sm text-muted-foreground">Sube imagenes y videos del producto</p>
-              </div>
-
-              {/* Upload area */}
-              <div
-                className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <Upload className="h-10 w-10 mx-auto text-muted-foreground/50" />
-                <p className="mt-2 text-sm font-medium">Haz clic para subir archivos</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Imagenes (JPG, PNG, WebP) o Videos (MP4, MOV)
-                </p>
-              </div>
-
-              {/* Existing media */}
-              {existingMedia.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-sm">Archivos actuales</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {existingMedia.map((media) => (
-                      <div key={media.id} className="relative group">
-                        <div className="aspect-square rounded-lg overflow-hidden border border-border bg-muted">
-                          {media.media_type === "video" ? (
-                            <div className="flex items-center justify-center h-full">
-                              <FileVideo className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                          ) : (
-                            <Image
-                              src={media.url}
-                              alt={media.file_name}
-                              fill
-                              className="object-cover"
-                              sizes="150px"
-                            />
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeExistingMedia(media)}
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                        <p className="text-xs text-muted-foreground mt-1 truncate">{media.file_name}</p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* New files to upload */}
-              {mediaFiles.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-sm">Nuevos archivos ({mediaFiles.length})</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {mediaFiles.map((media, index) => (
-                      <div key={index} className="relative group">
-                        <div className="aspect-square rounded-lg overflow-hidden border border-border bg-muted">
-                          {media.type === "video" ? (
-                            <video src={media.preview} className="w-full h-full object-cover" />
-                          ) : (
-                            <Image
-                              src={media.preview}
-                              alt={`Preview ${index + 1}`}
-                              fill
-                              className="object-cover"
-                              sizes="150px"
-                            />
-                          )}
+                {mediaFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm">Nuevos archivos ({mediaFiles.length})</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {mediaFiles.map((media, index) => (
+                        <div key={index} className="relative group">
+                          <div className="aspect-square rounded-lg overflow-hidden border bg-muted">
+                            {media.type === "video" ? (
+                              <video src={media.preview} className="w-full h-full object-cover" />
+                            ) : (
+                              <Image src={media.preview} alt={`Preview ${index + 1}`} fill className="object-cover" sizes="150px" />
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeMediaFile(index)}
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeMediaFile(index)}
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                        <div className="flex items-center gap-1 mt-1">
-                          {media.type === "video" ? (
-                            <FileVideo className="h-3 w-3 text-muted-foreground" />
-                          ) : (
-                            <ImageIcon className="h-3 w-3 text-muted-foreground" />
-                          )}
-                          <p className="text-xs text-muted-foreground truncate">{media.file.name}</p>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </TabsContent>
+                )}
+              </TabsContent>
+            </ScrollArea>
           </Tabs>
 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
-              disabled={saving || uploadingMedia}
-            >
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving || uploadingMedia}>
               Cancelar
             </Button>
-            <Button 
-              onClick={handleSave} 
-              disabled={saving || uploadingMedia || !form.name.trim()}
-              className="min-w-[140px]"
-            >
+            <Button onClick={handleSave} disabled={saving || uploadingMedia || !form.name.trim()} className="min-w-[140px]">
               {(saving || uploadingMedia) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {uploadingMedia ? "Subiendo media..." : saving ? "Guardando..." : editingProduct ? "Guardar cambios" : "Crear producto"}
+              {uploadingMedia ? "Subiendo..." : saving ? "Guardando..." : editingProduct ? "Guardar" : "Crear"}
             </Button>
           </div>
         </DialogContent>
@@ -1058,20 +1203,14 @@ export default function AdminProductsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar producto</AlertDialogTitle>
             <AlertDialogDescription>
-              {"Esta accion no se puede deshacer. Se eliminara permanentemente "}
-              <span className="font-semibold text-foreground">
-                {deletingProduct?.name}
-              </span>
-              {" del catalogo junto con todas sus imagenes y videos."}
+              Esta accion no se puede deshacer. Se eliminara permanentemente el producto
+              <strong className="mx-1">{deletingProduct?.name}</strong>
+              y todos sus datos asociados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Eliminar
             </AlertDialogAction>

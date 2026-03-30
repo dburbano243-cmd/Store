@@ -31,28 +31,28 @@ const defaultContent: CarouselCardsContent = {
       id: "card-1",
       title: "Servicio 1",
       description: "Descripción del primer servicio que ofrecemos a nuestros clientes.",
-      image: "/placeholder.svg?height=200&width=300",
+      image: "/images/placeholder.svg",
       link: "#",
     },
     {
       id: "card-2",
       title: "Servicio 2",
       description: "Descripción del segundo servicio con todas sus características.",
-      image: "/placeholder.svg?height=200&width=300",
+      image: "/images/placeholder.svg",
       link: "#",
     },
     {
       id: "card-3",
       title: "Servicio 3",
       description: "Descripción del tercer servicio disponible para ti.",
-      image: "/placeholder.svg?height=200&width=300",
+      image: "/images/placeholder.svg",
       link: "#",
     },
     {
       id: "card-4",
       title: "Servicio 4",
       description: "Descripción del cuarto servicio que ofrecemos.",
-      image: "/placeholder.svg?height=200&width=300",
+      image: "/images/placeholder.svg",
       link: "#",
     },
   ],
@@ -72,7 +72,7 @@ export function CarouselCards({
     subtitle = defaultContent.subtitle,
     cards = defaultContent.cards,
     cardsPerView = defaultContent.cardsPerView,
-  } = content as CarouselCardsContent
+  } = content as unknown as CarouselCardsContent
 
   const [scrollPosition, setScrollPosition] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -133,6 +133,7 @@ export function CarouselCards({
             <>
               <h2
                 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 outline-none focus:ring-2 focus:ring-primary rounded px-2"
+                style={{ color: styles?.textColor }}
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => handleTitleChange(e.currentTarget.textContent || "")}
@@ -140,7 +141,8 @@ export function CarouselCards({
                 {title}
               </h2>
               <p
-                className="text-muted-foreground text-lg max-w-2xl mx-auto outline-none focus:ring-2 focus:ring-primary rounded px-2"
+                className="text-lg max-w-2xl mx-auto outline-none focus:ring-2 focus:ring-primary rounded px-2"
+                style={{ color: styles?.textColor ? `${styles.textColor}99` : undefined, opacity: styles?.textColor ? 1 : 0.7 }}
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => handleSubtitleChange(e.currentTarget.textContent || "")}
@@ -150,10 +152,16 @@ export function CarouselCards({
             </>
           ) : (
             <>
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
+              <h2 
+                className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4"
+                style={{ color: styles?.textColor }}
+              >
                 {title}
               </h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              <p 
+                className="text-lg max-w-2xl mx-auto"
+                style={{ color: styles?.textColor ? `${styles.textColor}99` : undefined, opacity: styles?.textColor ? 1 : 0.7 }}
+              >
                 {subtitle}
               </p>
             </>
