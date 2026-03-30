@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import type { RegisteredComponentProps } from "@/components/admin/page-builder/ComponentRegistry"
+import type { BlockComponentProps } from "../types"
 
 export interface HeroBannerRightContent {
   title: string
@@ -41,7 +41,7 @@ export function HeroBannerRight({
   isSelected = false,
   onSelect,
   onContentChange,
-}: RegisteredComponentProps) {
+}: BlockComponentProps) {
   const {
     title = defaultContent.title,
     subtitle = defaultContent.subtitle,
@@ -91,8 +91,8 @@ export function HeroBannerRight({
           className="absolute inset-0"
           style={{ 
             backgroundColor: styles?.overlayColor || "#000000",
-            opacity: (overlayOpacity / 100) * 0.3,
-          } as React.CSSProperties}
+            opacity: (overlayOpacity / 100) * 0.3
+          }}
         />
       </div>
 
@@ -103,7 +103,7 @@ export function HeroBannerRight({
             <>
               <span
                 className="inline-block text-sm font-semibold uppercase tracking-wider mb-4 outline-none focus:ring-2 focus:ring-primary rounded px-1"
-                style={{ color: styles?.accentColor || "#10b981" } as React.CSSProperties}
+                style={{ color: styles?.accentColor || "#10b981" }}
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => handleTextChange("subtitle", e.currentTarget.textContent || "")}
@@ -133,7 +133,7 @@ export function HeroBannerRight({
             <>
               <span 
                 className="inline-block text-sm font-semibold uppercase tracking-wider mb-4"
-                style={{ color: styles?.accentColor || "#10b981" }as React.CSSProperties}
+                style={{ color: styles?.accentColor || "#10b981" }}
               >
                 {subtitle}
               </span>
@@ -158,7 +158,7 @@ export function HeroBannerRight({
                 <Button
                   size="lg"
                   className="px-8 py-6 text-lg"
-                  style={{ backgroundColor: styles?.accentColor || "#10b981" } as React.CSSProperties}
+                  style={{ backgroundColor: styles?.accentColor || "#10b981" }}
                   onClick={(e) => e.preventDefault()}
                 >
                   <span
@@ -174,7 +174,7 @@ export function HeroBannerRight({
                 <Button
                   size="lg"
                   className="px-8 py-6 text-lg"
-                  style={{ backgroundColor: styles?.accentColor || "#10b981" } as React.CSSProperties}
+                  style={{ backgroundColor: styles?.accentColor || "#10b981" }}
                   asChild
                 >
                   <Link href={buttonUrl}>{buttonText}</Link>

@@ -3,7 +3,7 @@
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import type { RegisteredComponentProps } from "@/components/admin/page-builder/ComponentRegistry"
+import type { BlockComponentProps } from "../types"
 
 export interface ImageTextContent {
   title: string
@@ -18,11 +18,11 @@ export interface ImageTextContent {
 
 const defaultContent: ImageTextContent = {
   title: "Sobre Nosotros",
-  text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+  text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
   image: "/images/placeholder.svg",
   imageAlt: "Imagen descriptiva",
   imagePosition: "left",
-  buttonText: "Saber más",
+  buttonText: "Saber mas",
   buttonUrl: "#",
   showButton: true,
 }
@@ -34,7 +34,7 @@ export function ImageText({
   isSelected = false,
   onSelect,
   onContentChange,
-}: RegisteredComponentProps) {
+}: BlockComponentProps) {
   const {
     title = defaultContent.title,
     text = defaultContent.text,
@@ -44,7 +44,7 @@ export function ImageText({
     buttonText = defaultContent.buttonText,
     buttonUrl = defaultContent.buttonUrl,
     showButton = defaultContent.showButton,
-  } = content as unknown as ImageTextContent
+  } = content as ImageTextContent
 
   const handleTextChange = (field: string, value: string) => {
     if (onContentChange) {
@@ -107,7 +107,7 @@ export function ImageText({
         <div className="pt-4">
           <Button
             size="lg"
-            style={{ backgroundColor: styles?.accentColor } as React.CSSProperties}
+            style={{ backgroundColor: styles?.accentColor }}
             onClick={(e) => {
               if (isEditable) {
                 e.preventDefault()

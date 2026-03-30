@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import type { RegisteredComponentProps } from "@/components/admin/page-builder/ComponentRegistry"
+import type { BlockComponentProps } from "../types"
 import { dataProvider, type GalleryVideo } from "@/lib/repositories"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { cn } from "@/lib/utils"
@@ -15,7 +15,7 @@ interface VideoGalleryContent {
 }
 
 /**
- * VideoGalleryBlock - Bloque del builder para galería de videos
+ * VideoGalleryBlock - Bloque del builder para galeria de videos
  * 
  * Usa el dataProvider para obtener videos, lo que permite
  * cambiar de proveedor de datos sin modificar este componente.
@@ -23,9 +23,7 @@ interface VideoGalleryContent {
 export function VideoGalleryBlock({
   content,
   styles,
-  isEditable = false,
-  isSelected = false,
-}: RegisteredComponentProps) {
+}: BlockComponentProps) {
   const [videos, setVideos] = useState<GalleryVideo[]>([])
   const [loading, setLoading] = useState(true)
   const [posters, setPosters] = useState<string[]>([])
@@ -33,7 +31,7 @@ export function VideoGalleryBlock({
 
   const {
     title = "Videos Demostrativos",
-    subtitle = "Descubre más sobre nuestros productos a través de estos videos informativos",
+    subtitle = "Descubre mas sobre nuestros productos a traves de estos videos informativos",
     columns = 3,
     aspectRatio = "9/16",
     showTitle = true,

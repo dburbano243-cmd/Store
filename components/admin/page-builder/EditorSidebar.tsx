@@ -553,7 +553,7 @@ function StylesEditor({ styles, onChange }: StylesEditorProps) {
           <div className="flex gap-2">
             <Input
               id="overlayColor"
-              value={(styles.overlayColor as string) || ""}
+              value={styles.overlayColor || ""}
               onChange={(e) =>
                 onChange({ ...styles, overlayColor: e.target.value })
               }
@@ -562,7 +562,7 @@ function StylesEditor({ styles, onChange }: StylesEditorProps) {
             />
             <input
               type="color"
-              value={(styles.overlayColor as string) || "#000000"}
+              value={styles.overlayColor || "#000000"}
               onChange={(e) =>
                 onChange({ ...styles, overlayColor: e.target.value })
               }
@@ -613,14 +613,14 @@ function StylesEditor({ styles, onChange }: StylesEditorProps) {
           <div className="flex gap-2">
             <Input
               id="accentColor"
-              value={(styles.accentColor as string) || ""}
+              value={styles.accentColor || ""}
               onChange={(e) => onChange({ ...styles, accentColor: e.target.value })}
               placeholder="#3b82f6"
               className="flex-1 h-8 text-xs"
             />
             <input
               type="color"
-              value={(styles.accentColor as string) || "#3b82f6"}
+              value={styles.accentColor || "#3b82f6"}
               onChange={(e) => onChange({ ...styles, accentColor: e.target.value })}
               className="h-8 w-8 cursor-pointer rounded border"
             />
@@ -633,14 +633,14 @@ function StylesEditor({ styles, onChange }: StylesEditorProps) {
           <div className="flex gap-2">
             <Input
               id="buttonColor"
-              value={(styles.buttonColor as string) || ""}
+              value={styles.buttonColor || ""}
               onChange={(e) => onChange({ ...styles, buttonColor: e.target.value })}
               placeholder="#111827"
               className="flex-1 h-8 text-xs"
             />
             <input
               type="color"
-              value={(styles.buttonColor as string) || "#111827"}
+              value={styles.buttonColor || "#111827"}
               onChange={(e) => onChange({ ...styles, buttonColor: e.target.value })}
               className="h-8 w-8 cursor-pointer rounded border"
             />
@@ -653,14 +653,14 @@ function StylesEditor({ styles, onChange }: StylesEditorProps) {
           <div className="flex gap-2">
             <Input
               id="buttonTextColor"
-              value={(styles.buttonTextColor as string) || ""}
+              value={styles.buttonTextColor || ""}
               onChange={(e) => onChange({ ...styles, buttonTextColor: e.target.value })}
               placeholder="#ffffff"
               className="flex-1 h-8 text-xs"
             />
             <input
               type="color"
-              value={(styles.buttonTextColor as string) || "#ffffff"}
+              value={styles.buttonTextColor || "#ffffff"}
               onChange={(e) => onChange({ ...styles, buttonTextColor: e.target.value })}
               className="h-8 w-8 cursor-pointer rounded border"
             />

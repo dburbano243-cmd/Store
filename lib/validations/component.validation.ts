@@ -1,224 +1,30 @@
 import { z } from 'zod'
-import { componentRegistry, componentMetadata, componentDefaultContent, componentDefaultStyles } from '@/components/admin/page-builder/ComponentRegistry'
+import { 
+  blockComponents, 
+  blockMetadata, 
+  blockDefaultContent, 
+  blockDefaultStyles,
+  blockContentSchemas,
+  allowedBlockTypes 
+} from '@/components/page-builder/blocks/registry'
+
+// Re-exportar nombres legacy para compatibilidad
+export { blockComponents as componentRegistry } from '@/components/page-builder/blocks/registry'
+export { blockMetadata as componentMetadata } from '@/components/page-builder/blocks/registry'
+export { blockDefaultContent as componentDefaultContent } from '@/components/page-builder/blocks/registry'
+export { blockDefaultStyles as componentDefaultStyles } from '@/components/page-builder/blocks/registry'
 
 /**
  * Lista de componentes permitidos (whitelist)
- * Solo los componentes que existen en el registry pueden ser creados en la DB
+ * Ahora se genera automaticamente desde el registry modular
  */
-export const ALLOWED_COMPONENTS = Object.keys(componentRegistry) as [string, ...string[]]
-
-/**
- * Schema para validar URLs seguras
- * Solo permite URLs relativas o de dominios específicos
- */
-const safeUrlSchema = z.string().refine((url) => {
-  // Permitir URLs relativas
-  if (url.startsWith('/') || url.startsWith('#') || url === '') {
-    return true
-  }
-  
-  // Lista de dominios permitidos
-  const allowedDomains = [
-    'supabase.co',
-    'vercel.app',
-    'localhost',
-    // Agregar más dominios según sea necesario
-  ]
-  
-  try {
-    const parsed = new URL(url)
-    return allowedDomains.some(domain => parsed.hostname.endsWith(domain))
-  } catch {
-    return false
-  }
-}, {
-  message: 'URL no permitida. Solo se permiten URLs relativas o de dominios autorizados.'
-})
-
-/**
- * Schema para sanitizar texto (prevenir XSS)
- */
-const safeTextSchema = z.string().transform((text) => {
-  // Eliminar tags HTML potencialmente peligrosos
-  return text
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/on\w+\s*=/gi, '')
-    .replace(/javascript:/gi, '')
-})
-
-/**
- * Schema base para un slide del hero slider
- */
-const slideSchema = z.object({
-  id: z.string(),
-  title: safeTextSchema.optional(),
-  subtitle: safeTextSchema.optional(),
-  image: z.string().optional(),
-  buttonText: safeTextSchema.optional(),
-  buttonUrl: safeUrlSchema.optional(),
-})
-
-/**
- * Schema base para una card del carrusel
- */
-const cardSchema = z.object({
-  id: z.string(),
-  title: safeTextSchema.optional(),
-  description: safeTextSchema.optional(),
-  image: z.string().optional(),
-  link: safeUrlSchema.optional(),
-})
-
-/**
- * Schema para información de contacto
- */
-const contactInfoSchema = z.object({
-  email: z.string().email().optional().or(z.literal('')),
-  phone: safeTextSchema.optional(),
-  address: safeTextSchema.optional(),
-})
+export const ALLOWED_COMPONENTS = allowedBlockTypes as [string, ...string[]]
 
 /**
  * Schemas de contenido por tipo de componente
+ * Ahora importados directamente desde los configs de cada componente
  */
-export const componentContentSchemas: Record<string, z.ZodSchema> = {
-  hero_slider: z.object({
-    slides: z.array(slideSchema).optional(),
-    autoplay: z.boolean().optional(),
-    autoplaySpeed: z.number().min(1000).max(30000).optional(),
-    showArrows: z.boolean().optional(),
-    showDots: z.boolean().optional(),
-  }),
-  
-  carousel_cards: z.object({
-    title: safeTextSchema.optional(),
-    subtitle: safeTextSchema.optional(),
-    cards: z.array(cardSchema).optional(),
-    cardsPerView: z.number().min(1).max(6).optional(),
-  }),
-  
-  contact_section: z.object({
-    title: safeTextSchema.optional(),
-    subtitle: safeTextSchema.optional(),
-    contactInfo: contactInfoSchema.optional(),
-    formTitle: safeTextSchema.optional(),
-    submitButtonText: safeTextSchema.optional(),
-    showMap: z.boolean().optional(),
-    mapEmbedUrl: safeUrlSchema.optional(),
-  }),
-  
-  image_text: z.object({
-    title: safeTextSchema.optional(),
-    text: safeTextSchema.optional(),
-    image: z.string().optional(),
-    imageAlt: safeTextSchema.optional(),
-    imagePosition: z.enum(['left', 'right']).optional(),
-    showButton: z.boolean().optional(),
-    buttonText: safeTextSchema.optional(),
-    buttonUrl: safeUrlSchema.optional(),
-  }),
-  
-  title_text: z.object({
-    title: safeTextSchema.optional(),
-    text: safeTextSchema.optional(),
-    alignment: z.enum(['left', 'center', 'right']).optional(),
-    titleSize: z.enum(['sm', 'md', 'lg', 'xl']).optional(),
-  }),
-  
-  product_grid: z.object({
-    title: safeTextSchema.optional(),
-    subtitle: safeTextSchema.optional(),
-    dataSource: z.enum(['featured', 'recent', 'category', 'manual']).optional(),
-    categoryId: z.string().optional(),
-    limit: z.number().min(1).max(50).optional(),
-    columns: z.string().optional(),
-    showViewAll: z.boolean().optional(),
-    viewAllUrl: z.string().optional(),
-    manualProductIds: z.array(z.string()).optional(),
-  }),
-  
-  video_gallery: z.object({
-    title: safeTextSchema.optional(),
-    subtitle: safeTextSchema.optional(),
-    layout: z.enum(['grid', 'list', 'featured']).optional(),
-    columns: z.string().optional(),
-    videos: z.array(z.object({
-      id: z.string(),
-      title: safeTextSchema.optional(),
-      description: safeTextSchema.optional(),
-      youtubeUrl: z.string().optional(),
-      thumbnailUrl: z.string().optional(),
-    })).optional(),
-  }),
-  
-  image_text_left: z.object({
-    title: safeTextSchema.optional(),
-    subtitle: safeTextSchema.optional(),
-    text: safeTextSchema.optional(),
-    image: z.string().optional(),
-    imageAlt: safeTextSchema.optional(),
-    showButton: z.boolean().optional(),
-    buttonText: safeTextSchema.optional(),
-    buttonUrl: z.string().optional(),
-  }),
-  
-  image_text_right: z.object({
-    title: safeTextSchema.optional(),
-    subtitle: safeTextSchema.optional(),
-    text: safeTextSchema.optional(),
-    image: z.string().optional(),
-    imageAlt: safeTextSchema.optional(),
-    showButton: z.boolean().optional(),
-    buttonText: safeTextSchema.optional(),
-    buttonUrl: z.string().optional(),
-  }),
-  
-  hero_banner_left: z.object({
-    title: safeTextSchema.optional(),
-    subtitle: safeTextSchema.optional(),
-    text: safeTextSchema.optional(),
-    backgroundImage: z.string().optional(),
-    overlayOpacity: z.number().min(0).max(100).optional(),
-    showButton: z.boolean().optional(),
-    buttonText: safeTextSchema.optional(),
-    buttonUrl: z.string().optional(),
-    showSecondaryButton: z.boolean().optional(),
-    secondaryButtonText: safeTextSchema.optional(),
-    secondaryButtonUrl: z.string().optional(),
-  }),
-  
-  hero_banner_right: z.object({
-    title: safeTextSchema.optional(),
-    subtitle: safeTextSchema.optional(),
-    text: safeTextSchema.optional(),
-    backgroundImage: z.string().optional(),
-    overlayOpacity: z.number().min(0).max(100).optional(),
-    showButton: z.boolean().optional(),
-    buttonText: safeTextSchema.optional(),
-    buttonUrl: z.string().optional(),
-    showSecondaryButton: z.boolean().optional(),
-    secondaryButtonText: safeTextSchema.optional(),
-    secondaryButtonUrl: z.string().optional(),
-  }),
-  
-  header_eteris: z.object({
-    slides: z.array(z.object({
-      id: z.string(),
-      title: safeTextSchema.optional(),
-      text: safeTextSchema.optional(),
-      image: z.string().optional(),
-      buttonText: safeTextSchema.optional(),
-      buttonUrl: z.string().optional(),
-    })).optional(),
-    autoplay: z.boolean().optional(),
-    autoplaySpeed: z.number().min(1000).max(30000).optional(),
-    showSocials: z.boolean().optional(),
-    instagramUrl: z.string().optional(),
-    twitterUrl: z.string().optional(),
-    facebookUrl: z.string().optional(),
-  }),
-}
+export const componentContentSchemas: Record<string, z.ZodSchema> = blockContentSchemas
 
 /**
  * Schema para validar estilos de componentes
@@ -228,8 +34,13 @@ export const componentStylesSchema = z.object({
   margin: z.string().optional(),
   backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
   textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
+  accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
+  overlayColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
+  buttonColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
+  buttonTextColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
   borderRadius: z.string().optional(),
   customClasses: z.string().optional(),
+  className: z.string().optional(),
 })
 
 /**
@@ -245,7 +56,7 @@ export const createComponentTypeSchema = z.object({
 })
 
 /**
- * Valida el contenido de un componente según su tipo
+ * Valida el contenido de un componente segun su tipo
  */
 export function validateComponentContent(
   componentType: string, 
@@ -270,18 +81,18 @@ export function validateComponentContent(
 }
 
 /**
- * Verifica si un componente está en la whitelist
+ * Verifica si un componente esta en la whitelist
  */
 export function isComponentAllowed(componentName: string): boolean {
-  return componentName in componentRegistry
+  return componentName in blockComponents
 }
 
 /**
- * Obtiene la configuración segura de un componente
+ * Obtiene la configuracion segura de un componente
  * Solo devuelve datos de componentes que existen en el registry
  */
 export function getSecureComponentConfig(componentName: string): {
-  metadata: typeof componentMetadata[string]
+  metadata: typeof blockMetadata[string]
   defaultContent: Record<string, unknown>
   defaultStyles: Record<string, unknown>
 } | null {
@@ -290,14 +101,14 @@ export function getSecureComponentConfig(componentName: string): {
   }
   
   return {
-    metadata: componentMetadata[componentName],
-    defaultContent: componentDefaultContent[componentName] || {},
-    defaultStyles: componentDefaultStyles[componentName] || {},
+    metadata: blockMetadata[componentName],
+    defaultContent: blockDefaultContent[componentName] || {},
+    defaultStyles: blockDefaultStyles[componentName] || {},
   }
 }
 
 /**
- * Obtiene todos los componentes permitidos con su configuración
+ * Obtiene todos los componentes permitidos con su configuracion
  */
 export function getAllAllowedComponents(): Array<{
   name: string
@@ -307,8 +118,8 @@ export function getAllAllowedComponents(): Array<{
 }> {
   return ALLOWED_COMPONENTS.map(name => ({
     name,
-    label: componentMetadata[name]?.label || name,
-    icon: componentMetadata[name]?.icon || 'Box',
-    description: componentMetadata[name]?.description || '',
+    label: blockMetadata[name]?.label || name,
+    icon: blockMetadata[name]?.icon || 'Box',
+    description: blockMetadata[name]?.description || '',
   }))
 }

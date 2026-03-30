@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import type { RegisteredComponentProps } from "@/components/admin/page-builder/ComponentRegistry"
+import type { BlockComponentProps } from "../types"
 
 export interface CarouselCard {
   id: string
@@ -30,28 +30,28 @@ const defaultContent: CarouselCardsContent = {
     {
       id: "card-1",
       title: "Servicio 1",
-      description: "Descripción del primer servicio que ofrecemos a nuestros clientes.",
+      description: "Descripcion del primer servicio que ofrecemos a nuestros clientes.",
       image: "/images/placeholder.svg",
       link: "#",
     },
     {
       id: "card-2",
       title: "Servicio 2",
-      description: "Descripción del segundo servicio con todas sus características.",
+      description: "Descripcion del segundo servicio con todas sus caracteristicas.",
       image: "/images/placeholder.svg",
       link: "#",
     },
     {
       id: "card-3",
       title: "Servicio 3",
-      description: "Descripción del tercer servicio disponible para ti.",
+      description: "Descripcion del tercer servicio disponible para ti.",
       image: "/images/placeholder.svg",
       link: "#",
     },
     {
       id: "card-4",
       title: "Servicio 4",
-      description: "Descripción del cuarto servicio que ofrecemos.",
+      description: "Descripcion del cuarto servicio que ofrecemos.",
       image: "/images/placeholder.svg",
       link: "#",
     },
@@ -66,13 +66,13 @@ export function CarouselCards({
   isSelected = false,
   onSelect,
   onContentChange,
-}: RegisteredComponentProps) {
+}: BlockComponentProps) {
   const {
     title = defaultContent.title,
     subtitle = defaultContent.subtitle,
     cards = defaultContent.cards,
     cardsPerView = defaultContent.cardsPerView,
-  } = content as unknown as CarouselCardsContent
+  } = content as CarouselCardsContent
 
   const [scrollPosition, setScrollPosition] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)

@@ -341,10 +341,7 @@ export default function CheckoutPage() {
                 {cartItems.map((item) => {
                   const imgSrc = getItemImage(item)
                   const qty = Number(item.quantity || 1)
-                  const basePrice = (item as any).base_price ?? item.price
-                  const hasDiscount = basePrice > item.price
                   const lineTotal = item.price * qty
-                  const originalLineTotal = basePrice * qty
                   return (
                     <div key={item.id} className="flex gap-4 pb-4 border-b border-border last:border-0 last:pb-0">
                       <div className="relative w-16 h-16 flex-shrink-0 bg-muted rounded-lg overflow-hidden">
@@ -358,17 +355,9 @@ export default function CheckoutPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-medium text-foreground truncate">{item.name}</h3>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {hasDiscount && (
-                            <span className="text-xs line-through text-muted-foreground">
-                              ${basePrice.toLocaleString("es-CO")}
-                            </span>
-                          )}
-                          <span className="text-sm text-muted-foreground">
-                            ${item.price.toLocaleString("es-CO")} c/u
-                          </span>
-                        </div>
-                        {/* Quantity controls */}
+                        <span className="text-sm text-muted-foreground">
+                          ${item.price.toLocaleString("es-CO")} c/u
+                        </span>
                         <div className="flex items-center gap-2 mt-2">
                           <button
                             type="button"
@@ -399,11 +388,6 @@ export default function CheckoutPage() {
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        {hasDiscount && (
-                          <p className="text-xs line-through text-muted-foreground">
-                            ${originalLineTotal.toLocaleString("es-CO")}
-                          </p>
-                        )}
                         <p className="text-sm font-semibold text-foreground">
                           ${lineTotal.toLocaleString("es-CO")}
                         </p>

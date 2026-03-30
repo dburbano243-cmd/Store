@@ -193,7 +193,7 @@ export function ComponentToolbar({ pageId, onComponentAdded }: ComponentToolbarP
                     <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
                       {category.label}
                     </h4>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-1.5">
                       {categoryComponents.map((ct) => {
                         const Icon = getIcon(ct.icon)
                         const isAddingThis = isAdding === ct.name
@@ -203,16 +203,16 @@ export function ComponentToolbar({ pageId, onComponentAdded }: ComponentToolbarP
                             <TooltipTrigger asChild>
                               <Button
                                 variant="outline"
-                                className="h-auto flex-col gap-1 p-3"
+                                className="h-auto justify-start gap-2.5 px-3 py-2.5 w-full text-left"
                                 onClick={() => handleAddComponent(ct.name)}
                                 disabled={isAddingThis}
                               >
                                 {isAddingThis ? (
-                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                  <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                                 ) : (
-                                  <Icon className="h-5 w-5" />
+                                  <Icon className="h-4 w-4 shrink-0" />
                                 )}
-                                <span className="text-xs">{ct.label}</span>
+                                <span className="text-xs font-medium truncate">{ct.label}</span>
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent side="right">

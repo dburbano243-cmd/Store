@@ -173,8 +173,7 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Rich
         onPaste={handlePaste}
         data-placeholder={placeholder}
         className={cn(
-          "max-h-[500px] min-h-[200px] p-3 focus:outline-none",
-          "overflow-y-auto",
+          "min-h-[200px] p-3 focus:outline-none",
           "prose prose-sm max-w-none",
           "[&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-muted-foreground [&:empty]:before:pointer-events-none",
           "[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2",

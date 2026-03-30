@@ -3,8 +3,8 @@
 import { useEffect, useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { ShoppingCart, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
-import type { RegisteredComponentProps } from "@/components/admin/page-builder/ComponentRegistry"
+import { ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react"
+import type { BlockComponentProps } from "../types"
 import type { Product, MediaFile } from "@/lib/types"
 import { dataProvider } from "@/lib/repositories"
 import { useCart } from "@/hooks/useCart"
@@ -27,16 +27,14 @@ interface ProductGridContent {
 export function ProductGridBlock({
   content,
   styles,
-  isEditable = false,
-  isSelected = false,
-}: RegisteredComponentProps) {
+}: BlockComponentProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const {
     title = "Mis Productos",
-    subtitle = "Descubre nuestra colección cuidadosamente seleccionada de productos de alta calidad",
+    subtitle = "Descubre nuestra coleccion cuidadosamente seleccionada de productos de alta calidad",
     columns = 4,
     limit = 8,
     showTitle = true,
@@ -95,7 +93,7 @@ export function ProductGridBlock({
         )}
 
         {loading ? (
-          <div className="grid gap-8 ${gridCols}">
+          <div className={cn("grid gap-8", gridCols)}>
             {Array.from({ length: limit || 4 }).map((_, i) => (
               <div
                 key={i}

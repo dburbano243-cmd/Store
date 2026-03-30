@@ -5,7 +5,7 @@ import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { RegisteredComponentProps } from "@/components/admin/page-builder/ComponentRegistry"
+import type { BlockComponentProps } from "../types"
 
 export interface HeroSlide {
   id: string
@@ -36,8 +36,8 @@ const defaultContent: HeroSliderContent = {
     },
     {
       id: "slide-2",
-      title: "Nueva colección",
-      subtitle: "Explora las últimas tendencias de la temporada",
+      title: "Nueva coleccion",
+      subtitle: "Explora las ultimas tendencias de la temporada",
       image: "/images/placeholder.svg",
       buttonText: "Explorar",
       buttonUrl: "/coleccion",
@@ -56,14 +56,14 @@ export function HeroSlider({
   isSelected = false,
   onSelect,
   onContentChange,
-}: RegisteredComponentProps) {
+}: BlockComponentProps) {
   const {
     slides = defaultContent.slides,
     autoplay = defaultContent.autoplay,
     autoplaySpeed = defaultContent.autoplaySpeed,
     showArrows = defaultContent.showArrows,
     showDots = defaultContent.showDots,
-  } = content as unknown as HeroSliderContent
+  } = content as HeroSliderContent
 
   const [currentSlide, setCurrentSlide] = useState(0)
 
@@ -142,7 +142,7 @@ export function HeroSlider({
             {/* Overlay */}
             <div 
               className="absolute inset-0" 
-              style={{ backgroundColor: styles?.overlayColor || "#000000", opacity: 0.4 } as React.CSSProperties}
+              style={{ backgroundColor: styles?.overlayColor || "#000000", opacity: 0.4 }}
             />
             
             {/* Content */}
@@ -196,7 +196,7 @@ export function HeroSlider({
                   style={{ 
                     backgroundColor: styles?.accentColor || "#ffffff", 
                     color: styles?.accentColor ? "#ffffff" : "#000000" 
-                  } as React.CSSProperties}
+                  }}
                   onClick={(e) => {
                     if (isEditable) {
                       e.preventDefault()

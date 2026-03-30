@@ -4,9 +4,9 @@ import Image from "next/image"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import type { RegisteredComponentProps } from "@/components/admin/page-builder/ComponentRegistry"
+import type { BlockComponentProps } from "../types"
 
-export interface ImageTextRightContent {
+export interface ImageTextLeftContent {
   title: string
   subtitle: string
   text: string
@@ -17,25 +17,25 @@ export interface ImageTextRightContent {
   showButton: boolean
 }
 
-const defaultContent: ImageTextRightContent = {
-  title: "Calidad Garantizada",
-  subtitle: "Nuestro Compromiso",
-  text: "Nos esforzamos por ofrecer productos de la más alta calidad. Cada artículo pasa por rigurosos controles para asegurar que cumple con nuestros estándares de excelencia.",
+const defaultContent: ImageTextLeftContent = {
+  title: "Descubre Nuestra Historia",
+  subtitle: "Sobre Nosotros",
+  text: "Somos una empresa comprometida con la calidad y la excelencia. Cada producto que ofrecemos esta cuidadosamente seleccionado para garantizar la mejor experiencia para nuestros clientes.",
   image: "/images/placeholder.svg",
   imageAlt: "Imagen descriptiva",
-  buttonText: "Ver productos",
-  buttonUrl: "/productos",
+  buttonText: "Conocer mas",
+  buttonUrl: "/about",
   showButton: true,
 }
 
-export function ImageTextRight({
+export function ImageTextLeft({
   content,
   styles,
   isEditable = false,
   isSelected = false,
   onSelect,
   onContentChange,
-}: RegisteredComponentProps) {
+}: BlockComponentProps) {
   const {
     title = defaultContent.title,
     subtitle = defaultContent.subtitle,
@@ -45,7 +45,7 @@ export function ImageTextRight({
     buttonText = defaultContent.buttonText,
     buttonUrl = defaultContent.buttonUrl,
     showButton = defaultContent.showButton,
-  } = (content || {}) as Partial<ImageTextRightContent>
+  } = (content || {}) as Partial<ImageTextLeftContent>
 
   const handleTextChange = (field: string, value: string) => {
     if (onContentChange) {
@@ -61,20 +61,37 @@ export function ImageTextRight({
         styles?.className
       )}
       style={{
-        backgroundColor: styles?.backgroundColor || "#f8fafc",
+        backgroundColor: styles?.backgroundColor || "#ffffff",
         color: styles?.textColor,
       }}
       onClick={onSelect}
     >
       <div className="container mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* Content - Left */}
-          <div className="space-y-6 order-2 lg:order-1">
+          {/* Image - Left */}
+          <div className="relative">
+            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl">
+              <Image
+                src={image}
+                alt={imageAlt}
+                fill
+                className="object-cover"
+              />
+            </div>
+            {/* Decorative element */}
+            <div 
+              className="absolute -bottom-6 -right-6 w-32 h-32 rounded-2xl -z-10"
+              style={{ backgroundColor: styles?.accentColor || "#3b82f6", opacity: 0.2 }}
+            />
+          </div>
+
+          {/* Content - Right */}
+          <div className="space-y-6">
             {isEditable ? (
               <>
                 <span
                   className="text-sm font-semibold uppercase tracking-wider outline-none focus:ring-2 focus:ring-primary rounded px-1"
-                  style={{ color: styles?.accentColor || "#3b82f6" } as React.CSSProperties}
+                  style={{ color: styles?.accentColor || "#3b82f6" }}
                   contentEditable
                   suppressContentEditableWarning
                   onBlur={(e) => handleTextChange("subtitle", e.currentTarget.textContent || "")}
@@ -104,7 +121,7 @@ export function ImageTextRight({
               <>
                 <span 
                   className="text-sm font-semibold uppercase tracking-wider"
-                  style={{ color: styles?.accentColor || "#3b82f6" } as React.CSSProperties}
+                  style={{ color: styles?.accentColor || "#3b82f6" }}
                 >
                   {subtitle}
                 </span>
@@ -129,7 +146,7 @@ export function ImageTextRight({
                   <Button
                     size="lg"
                     className="px-8"
-                    style={{ backgroundColor: styles?.accentColor || "#3b82f6" } as React.CSSProperties}
+                    style={{ backgroundColor: styles?.accentColor || "#3b82f6" }}
                     onClick={(e) => e.preventDefault()}
                   >
                     <span
@@ -145,7 +162,7 @@ export function ImageTextRight({
                   <Button
                     size="lg"
                     className="px-8"
-                    style={{ backgroundColor: styles?.accentColor || "#3b82f6" } as React.CSSProperties}
+                    style={{ backgroundColor: styles?.accentColor || "#3b82f6" }}
                     asChild
                   >
                     <Link href={buttonUrl}>{buttonText}</Link>
@@ -153,23 +170,6 @@ export function ImageTextRight({
                 )}
               </div>
             )}
-          </div>
-
-          {/* Image - Right */}
-          <div className="relative order-1 lg:order-2">
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl">
-              <Image
-                src={image}
-                alt={imageAlt}
-                fill
-                className="object-cover"
-              />
-            </div>
-            {/* Decorative element */}
-            <div 
-              className="absolute -bottom-6 -left-6 w-32 h-32 rounded-2xl -z-10"
-              style={{ backgroundColor: styles?.accentColor || "#3b82f6", opacity: 0.2 } as React.CSSProperties}
-            />
           </div>
         </div>
       </div>

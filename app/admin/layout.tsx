@@ -12,13 +12,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, isAdmin, loading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
-  
+
   // Check if we're on the page builder route
   const isPageBuilder = pathname?.startsWith("/admin/pages/") && pathname !== "/admin/pages"
-  
+
   // Sidebar state - default collapsed when in page builder
   const [sidebarOpen, setSidebarOpen] = useState(!isPageBuilder)
-  
+
   // Auto-collapse sidebar when entering page builder
   useEffect(() => {
     if (isPageBuilder) {
@@ -31,7 +31,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Redirigir si no hay usuario o no es admin
   useEffect(() => {
     if (!loading && (!user || !isAdmin)) {
-      router.push("/login")
+      router.push("/auth/login")
     }
   }, [loading, user, isAdmin, router])
 

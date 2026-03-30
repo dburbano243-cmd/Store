@@ -244,9 +244,7 @@ export default function PagesAdminPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         {page.is_home && (
-                          <div title="Página de inicio">
-                            <Globe className="h-4 w-4 text-primary" />
-                          </div>
+                          <Globe className="h-4 w-4 text-primary" title="Página de inicio" />
                         )}
                         {page.title}
                       </div>

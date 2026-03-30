@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import type { RegisteredComponentProps } from "@/components/admin/page-builder/ComponentRegistry"
+import type { BlockComponentProps } from "../types"
 
 export interface TitleTextContent {
   title: string
@@ -11,8 +11,8 @@ export interface TitleTextContent {
 }
 
 const defaultContent: TitleTextContent = {
-  title: "Título de la Sección",
-  text: "Este es el contenido de texto que acompaña al título. Puedes escribir aquí toda la información que necesites compartir con tus visitantes. El texto se puede editar directamente haciendo clic sobre él.",
+  title: "Titulo de la Seccion",
+  text: "Este es el contenido de texto que acompana al titulo. Puedes escribir aqui toda la informacion que necesites compartir con tus visitantes. El texto se puede editar directamente haciendo clic sobre el.",
   alignment: "center",
   titleSize: "lg",
 }
@@ -37,13 +37,13 @@ export function TitleText({
   isSelected = false,
   onSelect,
   onContentChange,
-}: RegisteredComponentProps) {
+}: BlockComponentProps) {
   const {
     title = defaultContent.title,
     text = defaultContent.text,
     alignment = defaultContent.alignment,
     titleSize = defaultContent.titleSize,
-  } = content as unknown as TitleTextContent
+  } = content as TitleTextContent
 
   const handleTextChange = (field: string, value: string) => {
     if (onContentChange) {

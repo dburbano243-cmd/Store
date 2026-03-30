@@ -6,7 +6,7 @@ import { Send, AlertCircle } from "lucide-react"
 import emailjs from "@emailjs/browser"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import type { RegisteredComponentProps } from "@/components/admin/page-builder/ComponentRegistry"
+import type { BlockComponentProps } from "../types"
 
 export interface ContactSectionContent {
   title: string
@@ -27,21 +27,21 @@ export interface ContactSectionContent {
 }
 
 const defaultContent: ContactSectionContent = {
-  title: "Contáctame",
-  subtitle: "¿Tienes alguna pregunta? Me encantaría escucharte",
+  title: "Contactame",
+  subtitle: "Tienes alguna pregunta? Me encantaria escucharte",
   submitButtonText: "Enviar Mensaje",
   // Labels
   nameLabel: "Nombre",
   namePlaceholder: "Tu nombre completo",
-  emailLabel: "Correo Electrónico",
+  emailLabel: "Correo Electronico",
   emailPlaceholder: "tu@email.com",
   messageLabel: "Mensaje",
-  messagePlaceholder: "Escribe tu mensaje aquí...",
+  messagePlaceholder: "Escribe tu mensaje aqui...",
   // Mensajes
   successTitle: "Mensaje enviado",
-  successMessage: "¡Mensaje enviado correctamente! Te contactaré pronto.",
+  successMessage: "Mensaje enviado correctamente! Te contactare pronto.",
   errorTitle: "Error",
-  errorMessage: "Ocurrió un error al enviar el mensaje. Intenta de nuevo más tarde.",
+  errorMessage: "Ocurrio un error al enviar el mensaje. Intenta de nuevo mas tarde.",
 }
 
 export function ContactSection({
@@ -50,8 +50,7 @@ export function ContactSection({
   isEditable = false,
   isSelected = false,
   onSelect,
-  onContentChange,
-}: RegisteredComponentProps) {
+}: BlockComponentProps) {
   const mergedContent = { ...defaultContent, ...content } as ContactSectionContent
   const {
     title,
@@ -100,7 +99,7 @@ export function ContactSection({
     if (!serviceId || !templateId || !publicKey) {
       toast({
         title: errorTitle,
-        description: "El formulario de contacto no está configurado correctamente.",
+        description: "El formulario de contacto no esta configurado correctamente.",
         variant: "destructive",
       })
       setIsSubmitting(false)
@@ -184,7 +183,7 @@ export function ContactSection({
           </p>
         </div>
 
-        {/* Form - Exactly like original ContactForm.tsx */}
+        {/* Form */}
         <form onSubmit={handleSubmit} suppressHydrationWarning className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -259,7 +258,7 @@ export function ContactSection({
               style={{ 
                 backgroundColor: styles?.buttonColor || "#111827", 
                 color: styles?.buttonTextColor || "#ffffff" 
-              } as React.CSSProperties}
+              }}
             >
               {isSubmitting ? (
                 <>

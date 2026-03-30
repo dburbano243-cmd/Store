@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import type { RegisteredComponentProps } from "@/components/admin/page-builder/ComponentRegistry"
+import type { BlockComponentProps } from "../types"
 
 export interface HeroBannerLeftContent {
   title: string
@@ -23,13 +23,13 @@ export interface HeroBannerLeftContent {
 const defaultContent: HeroBannerLeftContent = {
   title: "Bienvenido a Nuestra Tienda",
   subtitle: "Colecciones Exclusivas",
-  text: "Descubre productos únicos cuidadosamente seleccionados para ti. Calidad, estilo y servicio excepcional en cada compra.",
+  text: "Descubre productos unicos cuidadosamente seleccionados para ti. Calidad, estilo y servicio excepcional en cada compra.",
   backgroundImage: "/images/placeholder.svg",
   overlayOpacity: 50,
   buttonText: "Explorar Productos",
   buttonUrl: "/productos",
   showButton: true,
-  secondaryButtonText: "Conocer más",
+  secondaryButtonText: "Conocer mas",
   secondaryButtonUrl: "/about",
   showSecondaryButton: true,
 }
@@ -41,7 +41,7 @@ export function HeroBannerLeft({
   isSelected = false,
   onSelect,
   onContentChange,
-}: RegisteredComponentProps) {
+}: BlockComponentProps) {
   const {
     title = defaultContent.title,
     subtitle = defaultContent.subtitle,
@@ -86,7 +86,7 @@ export function HeroBannerLeft({
           style={{ 
             backgroundColor: styles?.overlayColor || "#000000",
             opacity: overlayOpacity / 100 
-          } as React.CSSProperties}
+          }}
         />
       </div>
 
@@ -97,7 +97,7 @@ export function HeroBannerLeft({
             <>
               <span
                 className="inline-block text-sm font-semibold uppercase tracking-wider mb-4 outline-none focus:ring-2 focus:ring-primary rounded px-1"
-                style={{ color: styles?.accentColor || "#f59e0b" } as React.CSSProperties}
+                style={{ color: styles?.accentColor || "#f59e0b" }}
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => handleTextChange("subtitle", e.currentTarget.textContent || "")}
@@ -127,7 +127,7 @@ export function HeroBannerLeft({
             <>
               <span 
                 className="inline-block text-sm font-semibold uppercase tracking-wider mb-4"
-                style={{ color: styles?.accentColor || "#f59e0b" } as React.CSSProperties}
+                style={{ color: styles?.accentColor || "#f59e0b" }}
               >
                 {subtitle}
               </span>
@@ -152,7 +152,7 @@ export function HeroBannerLeft({
                 <Button
                   size="lg"
                   className="px-8 py-6 text-lg"
-                  style={{ backgroundColor: styles?.accentColor || "#f59e0b" } as React.CSSProperties}
+                  style={{ backgroundColor: styles?.accentColor || "#f59e0b" }}
                   onClick={(e) => e.preventDefault()}
                 >
                   <span
@@ -168,7 +168,7 @@ export function HeroBannerLeft({
                 <Button
                   size="lg"
                   className="px-8 py-6 text-lg"
-                  style={{ backgroundColor: styles?.accentColor || "#f59e0b" } as React.CSSProperties}
+                  style={{ backgroundColor: styles?.accentColor || "#f59e0b" }}
                   asChild
                 >
                   <Link href={buttonUrl}>{buttonText}</Link>

@@ -5,7 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Instagram, Twitter, Facebook, ChevronRight } from "lucide-react"
-import type { ComponentStyles, EditableComponentProps } from "@/lib/types/page-builder.types"
+import type { BlockComponentProps } from "../types"
 
 export interface EterisSlide {
   id: string
@@ -53,11 +53,6 @@ const defaultContent: HeaderEterisContent = {
   facebookUrl: "#",
 }
 
-interface HeaderEterisProps extends EditableComponentProps {
-  content: Record<string, unknown>
-  styles: ComponentStyles
-}
-
 export function HeaderEteris({
   content,
   styles,
@@ -65,7 +60,7 @@ export function HeaderEteris({
   isSelected = false,
   onSelect,
   onContentChange,
-}: HeaderEterisProps) {
+}: BlockComponentProps) {
   const {
     slides = defaultContent.slides,
     autoplay = defaultContent.autoplay,
@@ -74,7 +69,7 @@ export function HeaderEteris({
     instagramUrl = defaultContent.instagramUrl,
     twitterUrl = defaultContent.twitterUrl,
     facebookUrl = defaultContent.facebookUrl,
-  } = content as unknown as HeaderEterisContent
+  } = content as HeaderEterisContent
 
   const [currentSlide, setCurrentSlide] = useState(0)
   const [progress, setProgress] = useState(0)
@@ -173,7 +168,7 @@ export function HeaderEteris({
           {/* Overlay */}
           <div 
             className="absolute inset-0" 
-            style={{ backgroundColor: overlayColor, opacity: 0.5 } as React.CSSProperties }
+            style={{ backgroundColor: overlayColor, opacity: 0.5 }}
           />
         </div>
       ))}
@@ -285,7 +280,7 @@ export function HeaderEteris({
             <Link
               href={slides[currentSlide].buttonUrl || "#"}
               className="inline-flex items-center gap-2 text-sm uppercase tracking-widest transition-colors hover:opacity-80"
-              style={{ color: accentColor } as React.CSSProperties }
+              style={{ color: accentColor }}
               onClick={(e) => isEditable && e.preventDefault()}
             >
               {isEditable ? (
@@ -344,14 +339,14 @@ export function HeaderEteris({
                           cy="20"
                           r="17"
                           fill="none"
-                          stroke={accentColor as string}
+                          stroke={accentColor}
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeDasharray={`${2 * Math.PI * 17}`}
                           strokeDashoffset={`${2 * Math.PI * 17 * (1 - progress / 100)}`}
                           className="transition-all duration-50"
                         />
-                      ) }
+                      )}
                     </svg>
                     
                     {/* Number */}
@@ -360,7 +355,7 @@ export function HeaderEteris({
                         "relative z-10 text-sm font-medium transition-colors",
                         isActive ? "" : "text-white/50 hover:text-white/80"
                       )}
-                      style={{ color: isActive ? accentColor : undefined } as React.CSSProperties }
+                      style={{ color: isActive ? accentColor : undefined }}
                     >
                       {displayNumber}
                     </span>

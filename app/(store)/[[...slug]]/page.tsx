@@ -4,12 +4,29 @@ import { supabase } from "@/lib/supabase"
 import { componentRegistry } from "@/components/admin/page-builder/ComponentRegistry"
 import type { PageComponent } from "@/lib/types/page-builder.types"
 import { getGlobalStyles, type GlobalStyles } from "@/lib/services/page-builder.service"
+import Link from "next/link"
 
 interface DynamicPageProps {
-  params: Promise<{ slug: string[] }>
+  params: Promise<{ slug?: string[] }>
 }
 
 async function getPageBySlug(slug: string) {
+  // Si es la raiz, buscar la pagina home
+  if (slug === "" || slug === "/") {
+    const { data: page, error } = await supabase
+      .from("pages")
+      .select("*")
+      .or("slug.eq./,slug.eq.home,slug.eq.inicio,is_home.eq.true")
+      .eq("status", "published")
+      .limit(1)
+      .single()
+
+    if (error || !page) {
+      return null
+    }
+    return page
+  }
+
   const { data: page, error } = await supabase
     .from("pages")
     .select("*")
@@ -42,12 +59,12 @@ async function getPageComponents(pageId: string): Promise<PageComponent[]> {
 
 export async function generateMetadata({ params }: DynamicPageProps): Promise<Metadata> {
   const { slug } = await params
-  const fullSlug = slug.join("/")
+  const fullSlug = slug?.join("/") || ""
   const page = await getPageBySlug(fullSlug)
 
   if (!page) {
     return {
-      title: "Página no encontrada",
+      title: "Pagina no encontrada",
     }
   }
 
@@ -92,65 +109,48 @@ function generateGlobalStylesCss(styles: GlobalStyles): string {
       font-weight: var(--builder-body-weight);
       line-height: var(--builder-body-line-height);
     }
-    .builder-page h1 {
-      font-family: var(--builder-heading-font);
-      font-size: var(--builder-h1-size);
-      font-weight: var(--builder-heading-weight);
-      line-height: var(--builder-heading-line-height);
-    }
-    .builder-page h2 {
-      font-family: var(--builder-heading-font);
-      font-size: var(--builder-h2-size);
-      font-weight: var(--builder-heading-weight);
-      line-height: var(--builder-heading-line-height);
-    }
-    .builder-page h3 {
-      font-family: var(--builder-heading-font);
-      font-size: var(--builder-h3-size);
-      font-weight: var(--builder-heading-weight);
-      line-height: var(--builder-heading-line-height);
-    }
-    .builder-page h4 {
-      font-family: var(--builder-heading-font);
-      font-size: var(--builder-h4-size);
-      font-weight: var(--builder-heading-weight);
-      line-height: var(--builder-heading-line-height);
-    }
-    .builder-page .text-primary,
-    .builder-page a {
-      color: var(--builder-primary);
-    }
-    .builder-page .bg-primary {
-      background-color: var(--builder-primary);
-    }
-    .builder-page .text-secondary {
-      color: var(--builder-secondary);
-    }
-    .builder-page .bg-secondary {
-      background-color: var(--builder-secondary);
-    }
-    .builder-page .text-accent {
-      color: var(--builder-accent);
-    }
-    .builder-page .bg-accent {
-      background-color: var(--builder-accent);
-    }
-    .builder-page .text-small {
-      font-size: var(--builder-small-size);
-    }
-    .builder-page button,
-    .builder-page .btn {
-      border-radius: var(--builder-border-radius);
-    }
+    .builder-page h1 { font-family: var(--builder-heading-font); font-size: var(--builder-h1-size); font-weight: var(--builder-heading-weight); line-height: var(--builder-heading-line-height); }
+    .builder-page h2 { font-family: var(--builder-heading-font); font-size: var(--builder-h2-size); font-weight: var(--builder-heading-weight); line-height: var(--builder-heading-line-height); }
+    .builder-page h3 { font-family: var(--builder-heading-font); font-size: var(--builder-h3-size); font-weight: var(--builder-heading-weight); line-height: var(--builder-heading-line-height); }
+    .builder-page h4 { font-family: var(--builder-heading-font); font-size: var(--builder-h4-size); font-weight: var(--builder-heading-weight); line-height: var(--builder-heading-line-height); }
+    .builder-page .text-primary, .builder-page a { color: var(--builder-primary); }
+    .builder-page .bg-primary { background-color: var(--builder-primary); }
+    .builder-page .text-secondary { color: var(--builder-secondary); }
+    .builder-page .bg-secondary { background-color: var(--builder-secondary); }
+    .builder-page .text-accent { color: var(--builder-accent); }
+    .builder-page .bg-accent { background-color: var(--builder-accent); }
+    .builder-page .text-small { font-size: var(--builder-small-size); }
+    .builder-page button, .builder-page .btn { border-radius: var(--builder-border-radius); }
     ${styles.custom_css || ''}
   `
 }
 
 export default async function DynamicPage({ params }: DynamicPageProps) {
   const { slug } = await params
-  const fullSlug = slug.join("/")
+  const fullSlug = slug?.join("/") || ""
   
   const page = await getPageBySlug(fullSlug)
+
+  // Si no hay pagina y es la raiz, mostrar mensaje de bienvenida
+  if (!page && fullSlug === "") {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
+        <div className="text-center max-w-lg">
+          <h1 className="text-3xl font-bold mb-4">Bienvenido</h1>
+          <p className="text-muted-foreground mb-6">
+            La pagina de inicio aun no ha sido configurada. 
+            Crea una pagina con el slug &quot;home&quot; desde el Page Builder.
+          </p>
+          <Link 
+            href="/admin/pages"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Ir al Page Builder
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   if (!page) {
     notFound()
@@ -171,7 +171,6 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
           const Component = componentRegistry[component.component_type]
 
           if (!Component) {
-            // Component type not registered, skip it
             return null
           }
 
@@ -188,9 +187,17 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
 
         {components.length === 0 && (
           <div className="flex min-h-[50vh] items-center justify-center">
-            <p className="text-muted-foreground">
-              Esta página no tiene contenido.
-            </p>
+            <div className="text-center">
+              <p className="text-muted-foreground mb-4">
+                Esta pagina no tiene contenido todavia.
+              </p>
+              <Link 
+                href={`/admin/pages/${page.id}`}
+                className="text-primary hover:underline"
+              >
+                Editar pagina
+              </Link>
+            </div>
           </div>
         )}
       </div>
