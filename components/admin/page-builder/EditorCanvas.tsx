@@ -230,6 +230,7 @@ function ComponentRenderer({
     <RegisteredComponent
       content={component.draft_content}
       styles={component.styles}
+      componentId={component.id}
       isEditable={isEditable}
       isSelected={isSelected}
       onContentChange={onContentChange}

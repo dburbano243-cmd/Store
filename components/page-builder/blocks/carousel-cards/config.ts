@@ -66,4 +66,20 @@ export const carouselCardsConfig: BlockConfig = {
     })).optional(),
     cardsPerView: z.number().min(1).max(6).optional(),
   }),
+
+  // Configuracion del editor de cards
+  arrayEditor: {
+    arrayFieldName: "cards",
+    labels: {
+      title: "Cards",
+      addButton: "Agregar card",
+      itemLabel: "Card",
+    },
+    itemFields: {
+      image: true,
+      title: true,
+      description: true,
+      link: true,
+    },
+  },
 }

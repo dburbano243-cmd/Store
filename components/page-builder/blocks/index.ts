@@ -1,16 +1,20 @@
-// =============================================
-// PAGE BUILDER BLOCKS - BÁSICOS
-// =============================================
+/**
+ * PAGE BUILDER BLOCKS - EXPORTS CENTRALIZADOS
+ * 
+ * Este archivo re-exporta todo desde el registry.
+ * NO necesitas modificar este archivo al agregar nuevos componentes.
+ * 
+ * Para agregar un nuevo componente:
+ * 1. Crear carpeta en /components/page-builder/blocks/[nombre]/
+ * 2. Crear index.tsx con el componente
+ * 3. Crear config.ts con la configuracion BlockConfig
+ * 4. Agregar entrada en registry.ts (blockRegistry)
+ * 
+ * TODO: En el futuro, registry.ts tambien sera auto-generado.
+ */
 
-export { HeroSlider } from "./HeroSlider"
-export { CarouselCards } from "./CarouselCards"
-export { ContactSection } from "./ContactSection"
-export { ImageText } from "./ImageText"
-export { TitleText } from "./TitleText"
+// Re-exportar todo desde el registry
+export * from "./registry"
 
-// Types
-export type { HeroSlide, HeroSliderContent } from "./HeroSlider"
-export type { CarouselCard, CarouselCardsContent } from "./CarouselCards"
-export type { ContactInfo, ContactSectionContent } from "./ContactSection"
-export type { ImageTextContent } from "./ImageText"
-export type { TitleTextContent } from "./TitleText"
+// Re-exportar tipos
+export * from "./types"

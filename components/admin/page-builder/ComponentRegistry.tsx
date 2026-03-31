@@ -31,7 +31,11 @@ export {
   blockDefaultContent,
   blockDefaultStyles,
   blockContentSchemas,
+  blockArrayEditorConfigs,
   allowedBlockTypes,
+  getBlockConfig,
+  getBlockComponent,
+  isValidBlockType,
 } from "@/components/page-builder/blocks/registry"
 
 /**

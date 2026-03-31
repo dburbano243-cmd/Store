@@ -29,15 +29,27 @@ export const componentContentSchemas: Record<string, z.ZodSchema> = blockContent
 /**
  * Schema para validar estilos de componentes
  */
+// Flexible color pattern that allows hex, rgba, transparent, and CSS color names
+const colorPattern = /^(#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3}|rgba?\([^)]+\)|transparent|[a-zA-Z]+|)$/
+
 export const componentStylesSchema = z.object({
   padding: z.string().optional(),
   margin: z.string().optional(),
-  backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
-  textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
-  accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
-  overlayColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
-  buttonColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
-  buttonTextColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$|^$/).optional(),
+  backgroundColor: z.string().regex(colorPattern).optional(),
+  textColor: z.string().regex(colorPattern).optional(),
+  accentColor: z.string().regex(colorPattern).optional(),
+  overlayColor: z.string().regex(colorPattern).optional(),
+  overlayOpacity: z.union([z.string(), z.number()]).optional(),
+  buttonColor: z.string().regex(colorPattern).optional(),
+  buttonTextColor: z.string().regex(colorPattern).optional(),
+  buttonBorderColor: z.string().regex(colorPattern).optional(),
+  buttonBackgroundColor: z.string().regex(colorPattern).optional(),
+  titleColor: z.string().regex(colorPattern).optional(),
+  subtitleColor: z.string().regex(colorPattern).optional(),
+  arrowColor: z.string().regex(colorPattern).optional(),
+  arrowBackgroundColor: z.string().regex(colorPattern).optional(),
+  dotColor: z.string().regex(colorPattern).optional(),
+  dotActiveColor: z.string().regex(colorPattern).optional(),
   borderRadius: z.string().optional(),
   customClasses: z.string().optional(),
   className: z.string().optional(),

@@ -63,4 +63,21 @@ export const heroSliderConfig: BlockConfig = {
     showArrows: z.boolean().optional(),
     showDots: z.boolean().optional(),
   }),
+
+  // Configuracion del editor de slides
+  arrayEditor: {
+    arrayFieldName: "slides",
+    labels: {
+      title: "Slides",
+      addButton: "Agregar slide",
+      itemLabel: "Slide",
+    },
+    itemFields: {
+      image: true,
+      title: true,
+      subtitle: true,
+      buttonText: true,
+      buttonUrl: true,
+    },
+  },
 }

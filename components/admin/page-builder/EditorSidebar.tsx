@@ -24,8 +24,10 @@ import {
 } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
 
+import { SlidesArrayEditor } from "./SlidesArrayEditor"
+import { MasonryMediaEditor } from "@/components/page-builder/blocks/masonry-eteris/MasonryMediaEditor"
 import type { PageComponent, ComponentStyles } from "@/lib/types/page-builder.types"
-import { componentMetadata, componentFieldConfigs } from "./ComponentRegistry"
+import { componentMetadata, componentFieldConfigs, blockArrayEditorConfigs } from "./ComponentRegistry"
 
 interface EditorSidebarProps {
   components: PageComponent[]
@@ -198,12 +200,13 @@ function SortableComponentAccordion({
               </TabsList>
 
               <TabsContent value="content" className="m-0 p-3">
-                <ContentEditor
-                  content={component.draft_content}
-                  componentType={component.component_type}
-                  onChange={onContentChange}
-                  styles={component.styles}
-                  onStylesChange={onStylesChange}
+ <ContentEditor
+  content={component.draft_content}
+  componentType={component.component_type}
+  pageComponentId={component.id}
+  onChange={onContentChange}
+  styles={component.styles}
+  onStylesChange={onStylesChange}
                 />
               </TabsContent>
 
@@ -235,13 +238,21 @@ function SortableComponentAccordion({
 interface ContentEditorProps {
   content: Record<string, unknown>
   componentType: string
+  pageComponentId?: string
   onChange: (content: Record<string, unknown>) => void
   styles?: ComponentStyles
   onStylesChange?: (styles: ComponentStyles) => void
 }
 
-function ContentEditor({ content, componentType, onChange, styles, onStylesChange }: ContentEditorProps) {
+function ContentEditor({ content, componentType, pageComponentId, onChange, styles, onStylesChange }: ContentEditorProps) {
   const fieldConfig = componentFieldConfigs[componentType]
+
+  // Obtener configuracion del editor de arrays desde el config del componente
+  const arrayEditorConfig = blockArrayEditorConfigs[componentType]
+  
+  // Determinar si tiene un array editable
+  const arrayFieldName = arrayEditorConfig?.arrayFieldName
+  const hasEditableArray = arrayFieldName && Array.isArray(content[arrayFieldName])
 
   if (fieldConfig && fieldConfig.length > 0) {
     // Separate content fields and style fields
@@ -258,6 +269,33 @@ function ContentEditor({ content, componentType, onChange, styles, onStylesChang
             {renderFieldInput(field, content, onChange, componentType)}
           </div>
         ))}
+
+        {/* Array Editor (slides/cards) - configurado desde el config del componente */}
+        {hasEditableArray && arrayEditorConfig && arrayFieldName && (
+          <div className="pt-2 border-t border-border">
+            <SlidesArrayEditor
+              slides={content[arrayFieldName] as Array<{ id: string; [key: string]: unknown }>}
+              onChange={(newItems) => onChange({ ...content, [arrayFieldName]: newItems })}
+              slideFields={arrayEditorConfig.itemFields}
+              labels={{
+                title: arrayEditorConfig.labels.title,
+                addButton: arrayEditorConfig.labels.addButton,
+                slideLabel: arrayEditorConfig.labels.itemLabel,
+              }}
+            />
+          </div>
+        )}
+
+        {/* Masonry Media Editor - for masonry_eteris component */}
+        {componentType === "masonry_eteris" && pageComponentId && (
+          <div className="pt-2 border-t border-border">
+            <MasonryMediaEditor
+              pageComponentId={pageComponentId}
+              items={(content.items as Array<{ id: string; url: string; type: "image" | "video"; alt?: string; aspectRatio?: number }>) || []}
+              onChange={(items) => onChange({ ...content, items })}
+            />
+          </div>
+        )}
         
         {styleFields.length > 0 && onStylesChange && styles && (
           <>

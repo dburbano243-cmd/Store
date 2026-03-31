@@ -179,6 +179,7 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
               key={component.id}
               content={component.published_content}
               styles={component.styles}
+              componentId={component.id}
               isEditable={false}
               isSelected={false}
             />
