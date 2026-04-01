@@ -28,7 +28,7 @@ export interface FieldConfig {
 export interface ComponentMeta {
   name: string
   label: string
-  category: 'heroes' | 'content' | 'products' | 'media' | 'contact'
+  category: 'heroes' | 'content' | 'products' | 'media' | 'contact' | 'interactive'
   icon: string
   description: string
 }

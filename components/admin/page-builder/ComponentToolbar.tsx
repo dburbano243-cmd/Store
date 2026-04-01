@@ -11,10 +11,12 @@ import {
   List,
   Video,
   MessageSquare,
+  MessageCircle,
   Star,
   ShoppingBag,
   Search,
   Loader2,
+  Mail,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -42,9 +44,10 @@ const iconMap: Record<string, React.ElementType> = {
   Square: Square,
   List: List,
   MessageSquare: MessageSquare,
+  MessageCircle: MessageCircle,
   Star: Star,
   ShoppingBag: ShoppingBag,
-  Mail: Square,
+  Mail: Mail,
 }
 
 // Fallback para iconos que no estan en el mapa
@@ -64,7 +67,7 @@ const registryComponentTypes: Array<{
     name,
     label: meta?.label || name,
     icon: meta?.icon || "Square",
-    category: "registered",
+    category: meta?.category || "registered"
   }
 })
 
@@ -83,17 +86,22 @@ export function ComponentToolbar({ pageId, onComponentAdded }: ComponentToolbarP
   // Filtrar por búsqueda
   const filteredTypes = searchQuery
     ? availableTypes.filter(
-        (ct) =>
-          ct.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          ct.label.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      (ct) =>
+        ct.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ct.label.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : availableTypes
 
   // Agrupar por categoría
   const categories = [
+    { key: "heroes", label: "Heroes" },
+    { key: "content", label: "Contenido" },
+    { key: "media", label: "Media" },
+    { key: "products", label: "Productos" },
+    { key: "interactive", label: "Interactivo" },
+    { key: "contact", label: "Contacto" },
     { key: "layout", label: "Layout" },
     { key: "text", label: "Texto" },
-    { key: "media", label: "Media" },
     { key: "components", label: "Componentes" },
     { key: "ecommerce", label: "E-commerce" },
     { key: "registered", label: "Registrados" },
@@ -127,14 +135,6 @@ export function ComponentToolbar({ pageId, onComponentAdded }: ComponentToolbarP
 
   return (
     <div className="w-64 shrink-0 border-r border-border bg-background">
-      {/* Header */}
-      <div className="border-b border-border p-4">
-        <h3 className="font-semibold">Componentes</h3>
-        <p className="text-xs text-muted-foreground">
-          Arrastra o haz clic para agregar
-        </p>
-      </div>
-
       {/* Search */}
       <div className="border-b border-border p-3">
         <div className="relative">
