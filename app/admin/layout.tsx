@@ -48,14 +48,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <AdminSidebar />
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
+        {/* Hide admin header on page builder for mobile, show compact version */}
+        <header className={`flex h-14 shrink-0 items-center gap-2 border-b border-border px-4 ${isPageBuilder ? "md:flex hidden" : ""}`}>
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <span className="text-sm font-medium text-muted-foreground">
             Administracion
           </span>
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        {/* Minimal mobile header for page builder */}
+        {isPageBuilder && (
+          <header className="flex md:hidden h-10 shrink-0 items-center gap-2 border-b border-border px-2">
+            <SidebarTrigger className="-ml-1 h-8 w-8" />
+            <span className="text-xs font-medium text-muted-foreground">Admin</span>
+          </header>
+        )}
+        <main className={`flex-1 overflow-x-hidden ${isPageBuilder ? "p-0" : "p-4 md:p-6"}`}>{children}</main>
       </SidebarInset>
     </SidebarProvider>
   )

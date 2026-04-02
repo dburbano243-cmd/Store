@@ -1,7 +1,7 @@
 // Visual Editor Components
 export { VisualEditor } from './VisualEditor'
 export { EditorCanvas } from './EditorCanvas'
-export { EditorSidebar } from './EditorSidebar'
+export { EditorSidebar, MobileEditorPanel } from './EditorSidebar'
 export { ComponentToolbar } from './ComponentToolbar'
 
 // Component Registry

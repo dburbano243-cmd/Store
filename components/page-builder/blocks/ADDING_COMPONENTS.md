@@ -131,7 +131,7 @@ export const miSliderConfig: BlockConfig = {
 
   defaultContent: {
     slides: [
-      { id: "1", title: "Slide 1", image: "/placeholder.jpg" },
+      { id: "1", title: "Slide 1", image: "/placeholder.svg" },
     ],
   },
 
