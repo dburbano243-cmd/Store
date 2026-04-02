@@ -245,7 +245,7 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
     : null
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-x-hidden w-full max-w-full">
       {/* Editor Header - Responsive */}
       <div className="flex h-12 md:h-14 shrink-0 items-center justify-between border-b border-border bg-background px-2 md:px-4">
         <div className="flex items-center gap-2 md:gap-4">
@@ -329,7 +329,7 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
       </div>
 
       {/* Editor Body */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-w-0">
         {/* Desktop: Component Toolbar on left */}
         <div className="hidden md:block">
           <ComponentToolbar pageId={page.id} onComponentAdded={handleComponentAdded} />
@@ -345,7 +345,7 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
             strategy={verticalListSortingStrategy}
           >
             {/* Canvas */}
-            <div className="flex-1 overflow-auto bg-muted/30 p-3 md:p-8">
+            <div className={`flex-1 overflow-y-auto overflow-x-hidden bg-muted/30 p-2 md:p-8 min-w-0 ${isMobile ? 'editor-canvas-mobile' : ''}`}>
               <EditorCanvas
                 components={components}
                 globalComponents={globalComponents}

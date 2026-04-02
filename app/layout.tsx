@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning data-scroll-behavior="smooth">
       <head />
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={`${inter.className} overflow-x-hidden`} suppressHydrationWarning>
         <SWRProvider>
           <AuthProvider>
             <CartProvider>{children}</CartProvider>

@@ -5,6 +5,7 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   :root {
@@ -92,6 +93,106 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+}
+
+/* Mobile editor preview - scale down components to fit */
+@layer components {
+  /* Force all containers in mobile editor to respect max width */
+  @media (max-width: 767px) {
+    .editor-canvas-mobile .container,
+    .editor-canvas-mobile [class*="container"] {
+      max-width: 100% !important;
+      padding-left: 0.5rem !important;
+      padding-right: 0.5rem !important;
+    }
+    
+    /* Scale down component previews in mobile editor */
+    .editor-canvas-mobile section {
+      transform-origin: top left;
+    }
+    
+    /* Reduce heights for mobile preview */
+    .editor-canvas-mobile [class*="min-h-[80vh"] {
+      min-height: 180px !important;
+    }
+    
+    .editor-canvas-mobile [class*="h-[400"],
+    .editor-canvas-mobile [class*="h-[500"],
+    .editor-canvas-mobile [class*="h-[600"] {
+      height: 180px !important;
+    }
+    
+    /* Reduce font sizes in preview */
+    .editor-canvas-mobile h1 {
+      font-size: 1rem !important;
+      line-height: 1.2 !important;
+    }
+    
+    .editor-canvas-mobile h2 {
+      font-size: 0.875rem !important;
+      line-height: 1.2 !important;
+    }
+    
+    .editor-canvas-mobile h3 {
+      font-size: 0.75rem !important;
+      line-height: 1.3 !important;
+    }
+    
+    .editor-canvas-mobile p,
+    .editor-canvas-mobile span {
+      font-size: 0.625rem !important;
+      line-height: 1.3 !important;
+    }
+    
+    /* Reduce button sizes in preview */
+    .editor-canvas-mobile button:not([data-sidebar]):not([class*="shrink-0"]) {
+      font-size: 0.625rem !important;
+      padding: 0.25rem 0.5rem !important;
+      height: auto !important;
+      min-height: 1.5rem !important;
+    }
+    
+    /* Reduce padding in sections */
+    .editor-canvas-mobile section {
+      padding-top: 1rem !important;
+      padding-bottom: 1rem !important;
+    }
+    
+    .editor-canvas-mobile [class*="py-12"],
+    .editor-canvas-mobile [class*="py-16"],
+    .editor-canvas-mobile [class*="py-20"] {
+      padding-top: 0.75rem !important;
+      padding-bottom: 0.75rem !important;
+    }
+    
+    /* Grid adjustments */
+    .editor-canvas-mobile [class*="grid-cols-"] {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 0.5rem !important;
+    }
+    
+    /* Card adjustments */
+    .editor-canvas-mobile [class*="Card"],
+    .editor-canvas-mobile .card {
+      padding: 0.5rem !important;
+    }
+    
+    .editor-canvas-mobile [class*="h-48"] {
+      height: 80px !important;
+    }
+    
+    /* Carousel specific */
+    .editor-canvas-mobile [class*="flex-shrink-0"] {
+      width: 45% !important;
+      min-width: 45% !important;
+    }
+    
+    /* Image heights */
+    .editor-canvas-mobile img {
+      max-height: 150px;
+      object-fit: cover;
+    }
   }
 }
 

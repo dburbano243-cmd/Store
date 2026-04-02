@@ -63,7 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="text-xs font-medium text-muted-foreground">Admin</span>
           </header>
         )}
-        <main className={`flex-1 ${isPageBuilder ? "p-0" : "p-4 md:p-6"}`}>{children}</main>
+        <main className={`flex-1 overflow-x-hidden ${isPageBuilder ? "p-0" : "p-4 md:p-6"}`}>{children}</main>
       </SidebarInset>
     </SidebarProvider>
   )

@@ -66,7 +66,7 @@ export default function PageEditorPage({ params }: PageEditorProps) {
   }
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] md:h-[calc(100vh-5rem)]">
+    <div className="h-[calc(100vh-3.5rem)] md:h-[calc(100vh-5rem)] overflow-x-hidden w-full max-w-full">
       <VisualEditor
         page={data.page}
         globalComponents={data.globalComponents}

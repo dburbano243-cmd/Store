@@ -43,12 +43,12 @@ export function EditorCanvas({
   )
 
   return (
-    <div className="mx-auto max-w-5xl px-0 md:px-0">
+    <div className="mx-auto w-full max-w-full md:max-w-5xl overflow-x-hidden overflow-y-visible">
       {/* Global Header Components (no editables) */}
       {headerComponents.map((component) => (
         <div
           key={component.id}
-          className="relative mb-2 md:mb-4 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 p-1 md:p-2"
+          className="relative mb-2 md:mb-4 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 p-1 md:p-2 overflow-hidden w-full"
         >
           <div className="absolute -top-2 left-1 md:-top-2.5 md:left-2 rounded bg-blue-500 px-1.5 md:px-2 py-0.5 text-[10px] md:text-xs text-white">
             Global: {component.component_type}
@@ -62,7 +62,7 @@ export function EditorCanvas({
       ))}
 
       {/* Page Components (editables y arrastrables) */}
-      <div className="space-y-2 md:space-y-4">
+      <div className="space-y-2 md:space-y-4 w-full overflow-hidden">
         {components.map((component) => (
           <SortableComponent
             key={component.id}
@@ -80,7 +80,7 @@ export function EditorCanvas({
       {footerComponents.map((component) => (
         <div
           key={component.id}
-          className="relative mt-2 md:mt-4 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 p-1 md:p-2"
+          className="relative mt-2 md:mt-4 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 p-1 md:p-2 overflow-hidden w-full"
         >
           <div className="absolute -top-2 left-1 md:-top-2.5 md:left-2 rounded bg-blue-500 px-1.5 md:px-2 py-0.5 text-[10px] md:text-xs text-white">
             Global: {component.component_type}
@@ -132,7 +132,7 @@ function SortableComponent({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative rounded-lg border-2 transition-all",
+        "group relative rounded-lg border-2 transition-all overflow-hidden w-full max-w-full",
         isDragging && "opacity-50",
         isSelected
           ? "border-primary ring-2 ring-primary/20"
@@ -179,7 +179,7 @@ function SortableComponent({
       </div>
 
       {/* Component Content */}
-      <div className="p-1 md:p-2">
+      <div className="p-1 md:p-2 overflow-hidden w-full">
         <ComponentRenderer
           component={component}
           isEditable={true}
@@ -226,15 +226,18 @@ function ComponentRenderer({
     )
   }
 
+  // Wrapper con overflow hidden para evitar scroll horizontal en preview
   return (
-    <RegisteredComponent
-      content={component.draft_content}
-      styles={component.styles}
-      componentId={component.id}
-      isEditable={isEditable}
-      isSelected={isSelected}
-      onContentChange={onContentChange}
-      onStylesChange={onStylesChange}
-    />
+    <div className="w-full overflow-hidden [&_*]:max-w-full">
+      <RegisteredComponent
+        content={component.draft_content}
+        styles={component.styles}
+        componentId={component.id}
+        isEditable={isEditable}
+        isSelected={isSelected}
+        onContentChange={onContentChange}
+        onStylesChange={onStylesChange}
+      />
+    </div>
   )
 }
