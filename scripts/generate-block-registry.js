@@ -1,4 +1,144 @@
 /**
+ * generate-block-registry.js
+ * 
+ * Escanea todas las carpetas en components/page-builder/blocks/ que tengan
+ * index.tsx + config.ts y genera automáticamente registry.generated.ts
+ * 
+ * Uso:
+ *   node scripts/generate-block-registry.js
+ *   (o via: npm run generate:blocks)
+ * 
+ * Para añadir un nuevo componente:
+ *   1. Crea la carpeta components/page-builder/blocks/mi-componente/
+ *   2. Añade index.tsx (componente) y config.ts (configuración)
+ *   3. Ejecuta npm run generate:blocks  (o simplemente npm run dev)
+ */
+
+const fs = require("fs")
+const path = require("path")
+
+const BLOCKS_DIR = path.join(__dirname, "../components/page-builder/blocks")
+const OUTPUT_FILE = path.join(BLOCKS_DIR, "registry.generated.ts")
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Convierte un nombre de carpeta kebab-case a PascalCase
+ * e.g. "hero-slider" → "HeroSlider"
+ */
+function toPascalCase(str) {
+  return str
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("")
+}
+
+/**
+ * Convierte un nombre de carpeta kebab-case a camelCase
+ * e.g. "hero-slider" → "heroSlider"
+ */
+function toCamelCase(str) {
+  const pascal = toPascalCase(str)
+  return pascal.charAt(0).toLowerCase() + pascal.slice(1)
+}
+
+/**
+ * Convierte un nombre de carpeta kebab-case a snake_case
+ * e.g. "hero-slider" → "hero_slider"
+ */
+function toSnakeCase(str) {
+  return str.replace(/-/g, "_")
+}
+
+/**
+ * Lee el nombre real del export del componente desde index.tsx
+ * Busca la primera línea "export function Nombre" o "export const Nombre"
+ * Si no encuentra, usa el PascalCase del folder.
+ */
+function extractComponentExport(indexPath) {
+  try {
+    const content = fs.readFileSync(indexPath, "utf-8")
+    // Matches: export function MyComponent( | export const MyComponent =
+    const match = content.match(/^export\s+(?:function|const)\s+([A-Z][a-zA-Z0-9_]*)/m)
+    if (match) return match[1]
+  } catch (_) {
+    // ignore
+  }
+  return null
+}
+
+/**
+ * Lee el nombre real del export de config desde config.ts
+ * Busca la primera línea "export const xyzConfig"
+ * Si no encuentra, usa el camelCase del folder + "Config".
+ */
+function extractConfigExport(configPath) {
+  try {
+    const content = fs.readFileSync(configPath, "utf-8")
+    // Matches: export const myComponentConfig
+    const match = content.match(/^export\s+const\s+([a-zA-Z][a-zA-Z0-9_]*Config)/m)
+    if (match) return match[1]
+  } catch (_) {
+    // ignore
+  }
+  return null
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+function main() {
+  console.log("🔍 Escaneando bloques en:", BLOCKS_DIR)
+
+  // Leer todas las subcarpetas
+  const entries = fs.readdirSync(BLOCKS_DIR, { withFileTypes: true })
+  const blockFolders = entries
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort()
+
+  // Filtrar solo las que tienen index.tsx + config.ts
+  const validBlocks = blockFolders.filter((folder) => {
+    const indexPath = path.join(BLOCKS_DIR, folder, "index.tsx")
+    const configPath = path.join(BLOCKS_DIR, folder, "config.ts")
+    return fs.existsSync(indexPath) && fs.existsSync(configPath)
+  })
+
+  if (validBlocks.length === 0) {
+    console.error("❌ No se encontraron bloques válidos (requieren index.tsx + config.ts)")
+    process.exit(1)
+  }
+
+  console.log(`✅ Encontrados ${validBlocks.length} bloques:`, validBlocks.join(", "))
+
+  // Construir la información de cada bloque
+  const blocks = validBlocks.map((folder) => {
+    const indexPath = path.join(BLOCKS_DIR, folder, "index.tsx")
+    const configPath = path.join(BLOCKS_DIR, folder, "config.ts")
+
+    const componentName = extractComponentExport(indexPath) || toPascalCase(folder)
+    const configName = extractConfigExport(configPath) || `${toCamelCase(folder)}Config`
+    const registryKey = toSnakeCase(folder)
+
+    return { folder, componentName, configName, registryKey }
+  })
+
+  // ─── Generar el contenido del archivo ──────────────────────────────────────
+
+  const imports = blocks
+    .map(
+      ({ folder, componentName, configName }) =>
+        `import { ${componentName} } from "./${folder}"\nimport { ${configName} } from "./${folder}/config"`
+    )
+    .join("\n")
+
+  const registryEntries = blocks
+    .map(
+      ({ registryKey, componentName, configName }) =>
+        `  "${registryKey}": { component: ${componentName}, config: ${configName} },`
+    )
+    .join("\n")
+
+  const output = `/**
  * ============================================
  * ARCHIVO GENERADO AUTOMÁTICAMENTE
  * ============================================
@@ -20,36 +160,7 @@ import type { BlockConfig, BlockComponentProps } from "./types"
 // ============================================
 // IMPORTS AUTO-GENERADOS
 // ============================================
-import { CarouselCards } from "./carousel-cards"
-import { carouselCardsConfig } from "./carousel-cards/config"
-import { ContactSection } from "./contact-section"
-import { contactSectionConfig } from "./contact-section/config"
-import { FullCardsSlider } from "./full-cards-slider"
-import { fullCardsSliderConfig } from "./full-cards-slider/config"
-import { HeaderEteris } from "./header-eteris"
-import { headerEterisConfig } from "./header-eteris/config"
-import { HeroBannerLeft } from "./hero-banner-left"
-import { heroBannerLeftConfig } from "./hero-banner-left/config"
-import { HeroBannerRight } from "./hero-banner-right"
-import { heroBannerRightConfig } from "./hero-banner-right/config"
-import { HeroSlider } from "./hero-slider"
-import { heroSliderConfig } from "./hero-slider/config"
-import { ImageText } from "./image-text"
-import { imageTextConfig } from "./image-text/config"
-import { ImageTextLeft } from "./image-text-left"
-import { imageTextLeftConfig } from "./image-text-left/config"
-import { ImageTextRight } from "./image-text-right"
-import { imageTextRightConfig } from "./image-text-right/config"
-import { MasonryEteris } from "./masonry-eteris"
-import { masonryEterisConfig } from "./masonry-eteris/config"
-import { ProductGridBlock } from "./product-grid"
-import { productGridConfig } from "./product-grid/config"
-import { TitleText } from "./title-text"
-import { titleTextConfig } from "./title-text/config"
-import { VideoGalleryBlock } from "./video-gallery"
-import { videoGalleryConfig } from "./video-gallery/config"
-import { WhatsappButton } from "./whatsapp-button"
-import { whatsappButtonConfig } from "./whatsapp-button/config"
+${imports}
 
 // ============================================
 // REGISTRY AUTO-GENERADO
@@ -60,21 +171,7 @@ interface BlockRegistryEntry {
 }
 
 const blockRegistry: Record<string, BlockRegistryEntry> = {
-  "carousel_cards": { component: CarouselCards, config: carouselCardsConfig },
-  "contact_section": { component: ContactSection, config: contactSectionConfig },
-  "full_cards_slider": { component: FullCardsSlider, config: fullCardsSliderConfig },
-  "header_eteris": { component: HeaderEteris, config: headerEterisConfig },
-  "hero_banner_left": { component: HeroBannerLeft, config: heroBannerLeftConfig },
-  "hero_banner_right": { component: HeroBannerRight, config: heroBannerRightConfig },
-  "hero_slider": { component: HeroSlider, config: heroSliderConfig },
-  "image_text": { component: ImageText, config: imageTextConfig },
-  "image_text_left": { component: ImageTextLeft, config: imageTextLeftConfig },
-  "image_text_right": { component: ImageTextRight, config: imageTextRightConfig },
-  "masonry_eteris": { component: MasonryEteris, config: masonryEterisConfig },
-  "product_grid": { component: ProductGridBlock, config: productGridConfig },
-  "title_text": { component: TitleText, config: titleTextConfig },
-  "video_gallery": { component: VideoGalleryBlock, config: videoGalleryConfig },
-  "whatsapp_button": { component: WhatsappButton, config: whatsappButtonConfig },
+${registryEntries}
 }
 
 // ============================================
@@ -184,3 +281,10 @@ export function getDefaultContent(blockName: string): Record<string, unknown> {
 export function getDefaultStyles(blockName: string): Record<string, unknown> {
   return blockRegistry[blockName]?.config.defaultStyles ?? {}
 }
+`
+
+  fs.writeFileSync(OUTPUT_FILE, output, "utf-8")
+  console.log("✅ registry.generated.ts actualizado con", blocks.length, "bloques.")
+}
+
+main()

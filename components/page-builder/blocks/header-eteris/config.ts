@@ -73,4 +73,21 @@ export const headerEterisConfig: BlockConfig = {
     twitterUrl: z.string().optional(),
     facebookUrl: z.string().optional(),
   }),
+
+  // Slides are managed via HeaderMediaEditor (images via component_media DB)
+  // Text fields (title, text, buttonText, buttonUrl) are editable inline + via sidebar
+  arrayEditor: {
+    arrayFieldName: "slides",
+    labels: {
+      title: "Slides",
+      addButton: "Agregar slide",
+      itemLabel: "Slide",
+    },
+    itemFields: {
+      title: true,
+      subtitle: true,   // maps to "text" field — handled in HeaderMediaEditor
+      buttonText: true,
+      buttonUrl: true,
+    },
+  },
 }

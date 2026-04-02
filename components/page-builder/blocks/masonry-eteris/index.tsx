@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import Image from "next/image"
-import { X, Play, Pause, Volume2, VolumeX, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { X, Play, Pause, Volume2, VolumeX, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { BlockComponentProps } from "../types"
 
@@ -282,6 +282,21 @@ function MasonryGridItem({
 }
 
 /* ------------------------------------------------------------------ */
+/*  Default placeholder items shown when no media has been configured */
+/* ------------------------------------------------------------------ */
+
+const DEFAULT_ITEMS: MasonryItem[] = [
+  { id: "default-1", url: "/placeholder.jpg", type: "image", alt: "Placeholder 1", aspectRatio: 1 },
+  { id: "default-2", url: "/placeholder.jpg", type: "image", alt: "Placeholder 2", aspectRatio: 0.75 },
+  { id: "default-3", url: "/placeholder.jpg", type: "image", alt: "Placeholder 3", aspectRatio: 1.33 },
+  { id: "default-4", url: "/placeholder.jpg", type: "image", alt: "Placeholder 4", aspectRatio: 1 },
+  { id: "default-5", url: "/placeholder.jpg", type: "image", alt: "Placeholder 5", aspectRatio: 0.75 },
+  { id: "default-6", url: "/placeholder.jpg", type: "image", alt: "Placeholder 6", aspectRatio: 1.33 },
+  { id: "default-7", url: "/placeholder.jpg", type: "image", alt: "Placeholder 7", aspectRatio: 1 },
+  { id: "default-8", url: "/placeholder.jpg", type: "image", alt: "Placeholder 8", aspectRatio: 0.75 },
+]
+
+/* ------------------------------------------------------------------ */
 /*  Main Component                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -294,30 +309,67 @@ export function MasonryEteris({ content, styles, componentId }: BlockComponentPr
     enableLightbox = true,
   } = content as MasonryEterisContent
 
-  // Usar el ID del componente que viene como prop (es el page_component_id real)
+  // Use the component ID that comes as prop (real page_component_id)
   const actualPageComponentId = componentId || pageComponentId
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
-  const [masonryItems, setMasonryItems] = useState<MasonryItem[]>(items)
+  const [masonryItems, setMasonryItems] = useState<MasonryItem[]>(
+    items.length > 0 ? items : DEFAULT_ITEMS
+  )
   const [isLoading, setIsLoading] = useState(false)
+  // Track which pageComponentId we already fetched so we never re-fetch on
+  // every render (parent recreates the `items` array literal each time).
+  const fetchedForId = useRef<string | null>(null)
 
-  // Load items from database using page_component_id
   useEffect(() => {
-    if (actualPageComponentId) {
-      setIsLoading(true)
-      fetch(`/api/component-media?pageComponentId=${actualPageComponentId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.items) {
-            setMasonryItems(data.items)
-          }
-        })
-        .catch(console.error)
-        .finally(() => setIsLoading(false))
-    } else {
-      setMasonryItems(items)
+    // No ID → use content.items or defaults, nothing to fetch from DB.
+    if (!actualPageComponentId) {
+      setMasonryItems(items.length > 0 ? items : DEFAULT_ITEMS)
+      return
     }
-  }, [actualPageComponentId, items])
+
+    // Already fetched for this exact component ID → do not repeat.
+    if (fetchedForId.current === actualPageComponentId) {
+      return
+    }
+
+    let cancelled = false
+    fetchedForId.current = actualPageComponentId
+    setIsLoading(true)
+
+    fetch(`/api/component-media?pageComponentId=${actualPageComponentId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (cancelled) return
+        const dbItems: MasonryItem[] = Array.isArray(data.items) ? data.items : []
+        if (dbItems.length > 0) {
+          // DB has media → use it
+          setMasonryItems(dbItems)
+        } else if (items.length > 0) {
+          // DB empty but content.items has data (configured in builder) → use it
+          setMasonryItems(items)
+        } else {
+          // Nothing anywhere → show defaults
+          setMasonryItems(DEFAULT_ITEMS)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMasonryItems(items.length > 0 ? items : DEFAULT_ITEMS)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+    // Intentionally excluding `items` — it's a new array reference on every
+    // render and would cause an infinite fetch loop. We only re-fetch when
+    // actualPageComponentId changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actualPageComponentId])
 
   const handleItemClick = (index: number) => {
     if (enableLightbox) {
@@ -336,36 +388,8 @@ export function MasonryEteris({ content, styles, componentId }: BlockComponentPr
 
   const columnItems = distributeItems()
 
-  if (isLoading) {
-    return (
-      <section
-        className="relative w-full py-8"
-        style={{ backgroundColor: styles?.backgroundColor }}
-      >
-        <div className="container mx-auto px-4 flex justify-center items-center min-h-[200px]">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
-      </section>
-    )
-  }
-
-  // Empty state
-  if (masonryItems.length === 0) {
-    return (
-      <section
-        className="relative w-full py-8"
-        style={{ backgroundColor: styles?.backgroundColor }}
-      >
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-center min-h-[200px] border-2 border-dashed border-border rounded-lg">
-            <p className="text-muted-foreground text-sm">
-              No hay imagenes o videos. Agrega contenido desde el editor.
-            </p>
-          </div>
-        </div>
-      </section>
-    )
-  }
+  // While fetching from DB, show the current items (defaults or content.items)
+  // with a subtle loading overlay instead of a full-screen spinner.
 
   return (
     <>

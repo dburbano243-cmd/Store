@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null
     const pageComponentId = formData.get("pageComponentId") as string
     const mediaType = formData.get("mediaType") as "image" | "video" | "document"
+    const metadataRaw = formData.get("metadata") as string | null
 
     if (!file || !pageComponentId || !mediaType) {
       return NextResponse.json(
@@ -144,7 +145,7 @@ export async function POST(req: NextRequest) {
         content_type: file.type,
         file_size: file.size,
         position: nextPosition,
-        metadata: {},
+        metadata: metadataRaw ? JSON.parse(metadataRaw) : {},
       })
       .select()
       .single()

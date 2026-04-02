@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils"
 
 import { SlidesArrayEditor } from "./SlidesArrayEditor"
 import { MasonryMediaEditor } from "@/components/page-builder/blocks/masonry-eteris/MasonryMediaEditor"
+import { HeaderMediaEditor } from "@/components/page-builder/blocks/header-eteris/HeaderMediaEditor"
+import type { EterisSlide } from "@/components/page-builder/blocks/header-eteris/index"
 import type { PageComponent, ComponentStyles } from "@/lib/types/page-builder.types"
 import { componentMetadata, componentFieldConfigs, blockArrayEditorConfigs } from "./ComponentRegistry"
 
@@ -271,7 +273,8 @@ function ContentEditor({ content, componentType, pageComponentId, onChange, styl
         ))}
 
         {/* Array Editor (slides/cards) - configurado desde el config del componente */}
-        {hasEditableArray && arrayEditorConfig && arrayFieldName && (
+        {/* Skipped for header_eteris — it uses HeaderMediaEditor instead */}
+        {hasEditableArray && arrayEditorConfig && arrayFieldName && componentType !== "header_eteris" && (
           <div className="pt-2 border-t border-border">
             <SlidesArrayEditor
               slides={content[arrayFieldName] as Array<{ id: string; [key: string]: unknown }>}
@@ -293,6 +296,17 @@ function ContentEditor({ content, componentType, pageComponentId, onChange, styl
               pageComponentId={pageComponentId}
               items={(content.items as Array<{ id: string; url: string; type: "image" | "video"; alt?: string; aspectRatio?: number }>) || []}
               onChange={(items) => onChange({ ...content, items })}
+            />
+          </div>
+        )}
+
+        {/* Header Media Editor - for header_eteris component */}
+        {componentType === "header_eteris" && pageComponentId && (
+          <div className="pt-2 border-t border-border">
+            <HeaderMediaEditor
+              pageComponentId={pageComponentId}
+              slides={(content.slides as EterisSlide[]) || []}
+              onChange={(slides) => onChange({ ...content, slides })}
             />
           </div>
         )}
