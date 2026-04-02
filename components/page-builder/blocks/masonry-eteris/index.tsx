@@ -286,14 +286,14 @@ function MasonryGridItem({
 /* ------------------------------------------------------------------ */
 
 const DEFAULT_ITEMS: MasonryItem[] = [
-  { id: "default-1", url: "/placeholder.jpg", type: "image", alt: "Placeholder 1", aspectRatio: 1 },
-  { id: "default-2", url: "/placeholder.jpg", type: "image", alt: "Placeholder 2", aspectRatio: 0.75 },
-  { id: "default-3", url: "/placeholder.jpg", type: "image", alt: "Placeholder 3", aspectRatio: 1.33 },
-  { id: "default-4", url: "/placeholder.jpg", type: "image", alt: "Placeholder 4", aspectRatio: 1 },
-  { id: "default-5", url: "/placeholder.jpg", type: "image", alt: "Placeholder 5", aspectRatio: 0.75 },
-  { id: "default-6", url: "/placeholder.jpg", type: "image", alt: "Placeholder 6", aspectRatio: 1.33 },
-  { id: "default-7", url: "/placeholder.jpg", type: "image", alt: "Placeholder 7", aspectRatio: 1 },
-  { id: "default-8", url: "/placeholder.jpg", type: "image", alt: "Placeholder 8", aspectRatio: 0.75 },
+  { id: "default-1", url: "/images/placeholder.svg", type: "image", alt: "Placeholder 1", aspectRatio: 1 },
+  { id: "default-2", url: "/images/placeholder.svg", type: "image", alt: "Placeholder 2", aspectRatio: 0.75 },
+  { id: "default-3", url: "/images/placeholder.svg", type: "image", alt: "Placeholder 3", aspectRatio: 1.33 },
+  { id: "default-4", url: "/images/placeholder.svg", type: "image", alt: "Placeholder 4", aspectRatio: 1 },
+  { id: "default-5", url: "/images/placeholder.svg", type: "image", alt: "Placeholder 5", aspectRatio: 0.75 },
+  { id: "default-6", url: "/images/placeholder.svg", type: "image", alt: "Placeholder 6", aspectRatio: 1.33 },
+  { id: "default-7", url: "/images/placeholder.svg", type: "image", alt: "Placeholder 7", aspectRatio: 1 },
+  { id: "default-8", url: "/images/placeholder.svg", type: "image", alt: "Placeholder 8", aspectRatio: 0.75 },
 ]
 
 /* ------------------------------------------------------------------ */
