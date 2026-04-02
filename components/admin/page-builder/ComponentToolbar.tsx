@@ -74,9 +74,10 @@ const registryComponentTypes: Array<{
 interface ComponentToolbarProps {
   pageId: string
   onComponentAdded?: (component: import("@/lib/types/page-builder.types").PageComponent) => void
+  isMobile?: boolean
 }
 
-export function ComponentToolbar({ pageId, onComponentAdded }: ComponentToolbarProps) {
+export function ComponentToolbar({ pageId, onComponentAdded, isMobile = false }: ComponentToolbarProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [isAdding, setIsAdding] = useState<string | null>(null)
 
@@ -133,6 +134,61 @@ export function ComponentToolbar({ pageId, onComponentAdded }: ComponentToolbarP
     return getIconComponent(iconName)
   }
 
+  // Mobile horizontal layout
+  if (isMobile) {
+    return (
+      <div className="shrink-0 border-b border-border bg-background">
+        {/* Mobile Search */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Input
+            placeholder="Buscar..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-7 text-xs"
+          />
+        </div>
+        
+        {/* Horizontal scrollable components */}
+        <div className="overflow-x-auto">
+          <div className="flex gap-2 p-2 min-w-max">
+            <TooltipProvider delayDuration={300}>
+              {filteredTypes.map((ct) => {
+                const Icon = getIcon(ct.icon)
+                const isAddingThis = isAdding === ct.name
+
+                return (
+                  <Tooltip key={ct.name}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1.5 px-2 shrink-0"
+                        onClick={() => handleAddComponent(ct.name)}
+                        disabled={isAddingThis}
+                      >
+                        {isAddingThis ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Icon className="h-3.5 w-3.5" />
+                        )}
+                        <span className="text-[10px] font-medium">{ct.label}</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p className="text-xs">Agregar {ct.label}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              })}
+            </TooltipProvider>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Desktop vertical layout
   return (
     <div className="w-64 shrink-0 border-r border-border bg-background">
       {/* Search */}

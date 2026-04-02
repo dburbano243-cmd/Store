@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
 import {
   DndContext,
@@ -26,15 +26,22 @@ import {
   Loader2,
   PanelRightOpen,
   PanelRightClose,
+  X,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { useToast } from "@/hooks/use-toast"
 
 import { EditorCanvas } from "./EditorCanvas"
-import { EditorSidebar } from "./EditorSidebar"
+import { EditorSidebar, MobileEditorPanel } from "./EditorSidebar"
 import { ComponentToolbar } from "./ComponentToolbar"
 
 import {
@@ -66,6 +73,18 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
   const [isSaving, setIsSaving] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false)
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
 
   // DnD Sensors
   const sensors = useSensors(
@@ -78,9 +97,6 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
-
-  // Selected component
-  const selectedComponent = components.find((c) => c.id === selectedComponentId) || null
 
   // Handlers
   const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -102,7 +118,11 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
 
   const handleSelectComponent = useCallback((id: string | null) => {
     setSelectedComponentId(id)
-  }, [])
+    // Open mobile editor when selecting a component on mobile
+    if (id && isMobile) {
+      setIsMobileEditorOpen(true)
+    }
+  }, [isMobile])
 
   const handleContentChange = useCallback((id: string, content: Record<string, unknown>) => {
     setComponents((prev) =>
@@ -219,36 +239,41 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
     }
   }
 
+  // Get selected component for mobile editor
+  const selectedComponentForMobile = selectedComponentId 
+    ? components.find((c) => c.id === selectedComponentId) 
+    : null
+
   return (
     <div className="flex h-full flex-col">
-      {/* Editor Header */}
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
+      {/* Editor Header - Responsive */}
+      <div className="flex h-12 md:h-14 shrink-0 items-center justify-between border-b border-border bg-background px-2 md:px-4">
+        <div className="flex items-center gap-2 md:gap-4">
+          <Button variant="ghost" size="sm" asChild className="h-8 px-2 md:px-3">
             <Link href="/admin/pages">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver
+              <ArrowLeft className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Volver</span>
             </Link>
           </Button>
-          <Separator orientation="vertical" className="h-6" />
-          <div className="flex items-center gap-2">
-            <h1 className="font-semibold">{page.title}</h1>
-            <Badge variant={page.status === "published" ? "default" : "secondary"}>
-              {page.status === "published" ? "Publicado" : "Borrador"}
+          <Separator orientation="vertical" className="h-6 hidden md:block" />
+          <div className="flex items-center gap-1 md:gap-2">
+            <h1 className="font-semibold text-xs md:text-base truncate max-w-[100px] md:max-w-none">{page.title}</h1>
+            <Badge variant={page.status === "published" ? "default" : "secondary"} className="text-[10px] md:text-xs h-5 md:h-auto">
+              {page.status === "published" ? "Pub" : "Borr"}
             </Badge>
             {hasUnsavedChanges && (
-              <Badge variant="outline" className="text-amber-600">
+              <Badge variant="outline" className="text-amber-600 text-[10px] md:text-xs h-5 md:h-auto hidden sm:flex">
                 Sin guardar
               </Badge>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
+        <div className="flex items-center gap-1 md:gap-2">
+          <Button variant="outline" size="sm" asChild className="h-8 px-2 md:px-3 hidden sm:flex">
             <Link href={`/${page.slug}`} target="_blank">
-              <Eye className="mr-2 h-4 w-4" />
-              Vista previa
+              <Eye className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Vista previa</span>
             </Link>
           </Button>
           <Button
@@ -256,31 +281,34 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
             size="sm"
             onClick={handleSaveDraft}
             disabled={isSaving || !hasUnsavedChanges}
+            className="h-8 px-2 md:px-3"
           >
             {isSaving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Save className="mr-2 h-4 w-4" />
+              <Save className="h-4 w-4 md:mr-2" />
             )}
-            Guardar borrador
+            <span className="hidden md:inline">Guardar</span>
           </Button>
           <Button
             size="sm"
             onClick={handlePublish}
             disabled={isPublishing}
+            className="h-8 px-2 md:px-3"
           >
             {isPublishing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Upload className="mr-2 h-4 w-4" />
+              <Upload className="h-4 w-4 md:mr-2" />
             )}
-            Publicar
+            <span className="hidden md:inline">Publicar</span>
           </Button>
-          <Separator orientation="vertical" className="mx-2 h-6" />
+          <Separator orientation="vertical" className="mx-1 md:mx-2 h-6 hidden md:block" />
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="h-8 w-8 hidden md:flex"
           >
             {isSidebarOpen ? (
               <PanelRightClose className="h-4 w-4" />
@@ -291,10 +319,21 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
         </div>
       </div>
 
+      {/* Mobile: Component Toolbar at top (horizontal scrollable) */}
+      <div className="md:hidden">
+        <ComponentToolbar 
+          pageId={page.id} 
+          onComponentAdded={handleComponentAdded} 
+          isMobile={true}
+        />
+      </div>
+
       {/* Editor Body */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Component Toolbar */}
-        <ComponentToolbar pageId={page.id} onComponentAdded={handleComponentAdded} />
+        {/* Desktop: Component Toolbar on left */}
+        <div className="hidden md:block">
+          <ComponentToolbar pageId={page.id} onComponentAdded={handleComponentAdded} />
+        </div>
 
         <DndContext
           sensors={sensors}
@@ -306,7 +345,7 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
             strategy={verticalListSortingStrategy}
           >
             {/* Canvas */}
-            <div className="flex-1 overflow-auto bg-muted/30 p-8">
+            <div className="flex-1 overflow-auto bg-muted/30 p-3 md:p-8">
               <EditorCanvas
                 components={components}
                 globalComponents={globalComponents}
@@ -319,17 +358,17 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
 
               {/* Empty State */}
               {components.length === 0 && (
-                <div className="flex h-64 flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25">
-                  <Plus className="h-10 w-10 text-muted-foreground/50" />
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    Arrastra componentes desde la barra lateral izquierda
+                <div className="flex h-40 md:h-64 flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25">
+                  <Plus className="h-8 w-8 md:h-10 md:w-10 text-muted-foreground/50" />
+                  <p className="mt-2 md:mt-4 text-xs md:text-sm text-muted-foreground text-center px-4">
+                    Selecciona un componente arriba para agregarlo
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Properties Sidebar */}
-            {isSidebarOpen && (
+            {/* Desktop: Properties Sidebar on right */}
+            {isSidebarOpen && !isMobile && (
               <EditorSidebar
                 components={components}
                 selectedComponentId={selectedComponentId}
@@ -342,6 +381,40 @@ export function VisualEditor({ page, globalComponents, onSave }: VisualEditorPro
           </SortableContext>
         </DndContext>
       </div>
+
+      {/* Mobile: Editor Sheet at bottom */}
+      {isMobile && (
+        <Sheet open={isMobileEditorOpen} onOpenChange={setIsMobileEditorOpen}>
+          <SheetContent side="bottom" className="h-[70vh] p-0 [&>button]:hidden">
+            <SheetHeader className="px-4 py-3 border-b border-border shrink-0">
+              <div className="flex items-center justify-between">
+                <SheetTitle className="text-sm font-medium">
+                  Editar componente
+                </SheetTitle>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7"
+                  onClick={() => setIsMobileEditorOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </SheetHeader>
+            {selectedComponentForMobile && (
+              <MobileEditorPanel
+                component={selectedComponentForMobile}
+                onContentChange={(content) => handleContentChange(selectedComponentForMobile.id, content)}
+                onStylesChange={(styles) => handleStylesChange(selectedComponentForMobile.id, styles)}
+                onDelete={() => {
+                  handleDeleteComponent(selectedComponentForMobile.id)
+                  setIsMobileEditorOpen(false)
+                }}
+              />
+            )}
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   )
 }

@@ -808,3 +808,96 @@ function LayoutEditor({ styles, onChange }: LayoutEditorProps) {
     </div>
   )
 }
+
+// =============================================
+// MOBILE EDITOR PANEL
+// =============================================
+
+interface MobileEditorPanelProps {
+  component: PageComponent
+  onContentChange: (content: Record<string, unknown>) => void
+  onStylesChange: (styles: ComponentStyles) => void
+  onDelete: () => void
+}
+
+export function MobileEditorPanel({
+  component,
+  onContentChange,
+  onStylesChange,
+  onDelete,
+}: MobileEditorPanelProps) {
+  const metadata = componentMetadata[component.component_type]
+  const label = metadata?.label || component.component_type
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Component name and delete */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-3.5 w-3.5 mr-1" />
+          <span className="text-xs">Eliminar</span>
+        </Button>
+      </div>
+
+      {/* Tabs for Content / Styles / Layout */}
+      <Tabs defaultValue="content" className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-9 shrink-0">
+          <TabsTrigger
+            value="content"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none text-xs h-9 px-3"
+          >
+            <Settings2 className="mr-1 h-3 w-3" />
+            Contenido
+          </TabsTrigger>
+          <TabsTrigger
+            value="styles"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none text-xs h-9 px-3"
+          >
+            <Palette className="mr-1 h-3 w-3" />
+            Estilos
+          </TabsTrigger>
+          <TabsTrigger
+            value="layout"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none text-xs h-9 px-3"
+          >
+            <Layout className="mr-1 h-3 w-3" />
+            Layout
+          </TabsTrigger>
+        </TabsList>
+
+        <ScrollArea className="flex-1">
+          <TabsContent value="content" className="m-0 p-3">
+            <ContentEditor
+              content={component.draft_content}
+              componentType={component.component_type}
+              pageComponentId={component.id}
+              onChange={onContentChange}
+              styles={component.styles}
+              onStylesChange={onStylesChange}
+            />
+          </TabsContent>
+
+          <TabsContent value="styles" className="m-0 p-3">
+            <StylesEditor
+              styles={component.styles}
+              onChange={onStylesChange}
+            />
+          </TabsContent>
+
+          <TabsContent value="layout" className="m-0 p-3">
+            <LayoutEditor
+              styles={component.styles}
+              onChange={onStylesChange}
+            />
+          </TabsContent>
+        </ScrollArea>
+      </Tabs>
+    </div>
+  )
+}

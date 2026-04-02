@@ -43,14 +43,14 @@ export function EditorCanvas({
   )
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl px-0 md:px-0">
       {/* Global Header Components (no editables) */}
       {headerComponents.map((component) => (
         <div
           key={component.id}
-          className="relative mb-4 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 p-2"
+          className="relative mb-2 md:mb-4 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 p-1 md:p-2"
         >
-          <div className="absolute -top-2.5 left-2 rounded bg-blue-500 px-2 py-0.5 text-xs text-white">
+          <div className="absolute -top-2 left-1 md:-top-2.5 md:left-2 rounded bg-blue-500 px-1.5 md:px-2 py-0.5 text-[10px] md:text-xs text-white">
             Global: {component.component_type}
           </div>
           <ComponentRenderer
@@ -62,7 +62,7 @@ export function EditorCanvas({
       ))}
 
       {/* Page Components (editables y arrastrables) */}
-      <div className="space-y-4">
+      <div className="space-y-2 md:space-y-4">
         {components.map((component) => (
           <SortableComponent
             key={component.id}
@@ -80,9 +80,9 @@ export function EditorCanvas({
       {footerComponents.map((component) => (
         <div
           key={component.id}
-          className="relative mt-4 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 p-2"
+          className="relative mt-2 md:mt-4 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 p-1 md:p-2"
         >
-          <div className="absolute -top-2.5 left-2 rounded bg-blue-500 px-2 py-0.5 text-xs text-white">
+          <div className="absolute -top-2 left-1 md:-top-2.5 md:left-2 rounded bg-blue-500 px-1.5 md:px-2 py-0.5 text-[10px] md:text-xs text-white">
             Global: {component.component_type}
           </div>
           <ComponentRenderer
@@ -146,7 +146,7 @@ function SortableComponent({
       {/* Component Toolbar */}
       <div
         className={cn(
-          "absolute -top-3 left-2 z-10 flex items-center gap-1 rounded bg-background shadow-sm transition-opacity",
+          "absolute -top-2.5 md:-top-3 left-1 md:left-2 z-10 flex items-center gap-0.5 md:gap-1 rounded bg-background shadow-sm transition-opacity",
           isSelected || isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         )}
       >
@@ -154,32 +154,32 @@ function SortableComponent({
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab rounded p-1 hover:bg-muted active:cursor-grabbing"
+          className="cursor-grab rounded p-0.5 md:p-1 hover:bg-muted active:cursor-grabbing"
         >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
+          <GripVertical className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
         </button>
 
         {/* Component Type Label */}
-        <span className="px-2 text-xs font-medium text-muted-foreground">
+        <span className="px-1 md:px-2 text-[10px] md:text-xs font-medium text-muted-foreground max-w-[80px] md:max-w-none truncate">
           {component.component_type}
         </span>
 
-        {/* Delete Button */}
+        {/* Delete Button - hidden on mobile (use bottom sheet instead) */}
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+          className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground hover:text-destructive hidden md:flex"
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
           }}
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5" />
         </Button>
       </div>
 
       {/* Component Content */}
-      <div className="p-2">
+      <div className="p-1 md:p-2">
         <ComponentRenderer
           component={component}
           isEditable={true}

@@ -66,7 +66,7 @@ export default function PageEditorPage({ params }: PageEditorProps) {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)]">
+    <div className="h-[calc(100vh-3.5rem)] md:h-[calc(100vh-5rem)]">
       <VisualEditor
         page={data.page}
         globalComponents={data.globalComponents}
